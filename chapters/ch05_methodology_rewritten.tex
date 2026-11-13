@@ -1,0 +1,225 @@
+\chapter{Proposed Approach and Methodology}
+\label{ch:methodology}
+
+The proposed method follows the decisions that must be made for each incoming request. First, the gateway determines where the content may be processed. It then checks whether an existing answer can be reused. If a new answer is needed, a quality predictor estimates the suitability of the registered models, and the policy engine selects among the permitted backends. This chapter defines those decisions mathematically and explains how they fit into one request-handling procedure.
+
+The model choices, thresholds, training-set size, and latency figures described here are proposed configurations and targets. They require validation in the project environment before they can be reported as achieved results.
+
+\section{Formal Mathematical Formulation}
+\label{sec:formal-formulation}
+
+Let $q\in\mathcal{Q}$ be a request received from a client, including the prompt and the context needed to answer it. Let $M=\{m_1,m_2,\ldots,m_K\}$ be the registered model pool. This pool may contain local services, such as an 8B model served through vLLM, and approved cloud APIs. Registration does not mean that a backend is available or permitted for every request.
+
+For each candidate, the gateway considers four quantities:
+\begin{itemize}
+    \item \textbf{Predicted quality, $\hat{Q}(q,m_k)\in[0,1]$:} The predictor's estimate of how well model $m_k$ will satisfy the request. Its interpretation depends on the scoring labels used during training; it is not a guarantee that the generated answer will be correct.
+    \item \textbf{Estimated cost, $C(q,m_k)\geq0$:} The expected inference charge, in USD, based on input length and estimated output length:
+    \begin{equation}
+    C(q,m_k)=\frac{|q_{\mathrm{tok}}|\,p_{\mathrm{in}}(m_k)
+    +\mathbb{E}[|y_{\mathrm{tok}}|]\,p_{\mathrm{out}}(m_k)}{1000}.
+    \end{equation}
+    Here, $p_{\mathrm{in}}$ and $p_{\mathrm{out}}$ are prices per 1,000 tokens. Token counts must use the selected backend's tokenizer or a documented approximation. The initial accounting convention assigns local calls a zero external API charge. This convention excludes electricity, hardware, and operating costs; it does not imply that local inference is free.
+    \item \textbf{Rolling latency, $L_t(m_k)>0$:} A moving estimate of backend response time, updated after an observation $L_{\mathrm{obs}}$:
+    \begin{equation}
+    L_t(m_k)=\alpha L_{\mathrm{obs}}+(1-\alpha)L_{t-1}(m_k),
+    \qquad \alpha=0.2.
+    \end{equation}
+    Recent observations receive more weight than older ones. A new backend needs an initial measurement or a conservative configured estimate; the database's initial zero value must not be interpreted as an instantaneous response. Time to first token and total completion time should be recorded separately, with the routing metric stated consistently.
+    \item \textbf{Privacy violation indicator, $P(q,m_k)\in\{0,1\}$:} A flag indicating that the request's privacy policy prohibits a destination. For the local-only rule:
+    \begin{equation}
+    P(q,m_k)=
+    \begin{cases}
+    1, & \text{if }q\text{ is local-only and }m_k\text{ is external},\\
+    0, & \text{otherwise}.
+    \end{cases}
+    \end{equation}
+    Credential detection or a confidential classification makes a request local-only. Masked personal data may be considered for an approved cloud service only when the policy explicitly permits the sanitized request and no local-only restriction remains.
+\end{itemize}
+
+\subsection{Multi-Objective Utility Function}
+\label{subsec:utility-func}
+
+Privacy is enforced by excluding prohibited destinations before comparing scores. Availability and department quotas further restrict the eligible set:
+\begin{equation}
+\begin{split}
+M_{\mathrm{eligible}}(q)=\{m\in M:\;&P(q,m)=0,\\
+&\mathrm{Available}(m),\ \mathrm{BudgetAllows}(q,m)\}.
+\end{split}
+\end{equation}
+
+For each remaining model, the policy engine calculates
+\begin{equation}
+U(q,m_k)=w_q\hat{Q}(q,m_k)
+-w_c\widetilde{C}(q,m_k)-w_l\widetilde{L}(m_k).
+\label{eq:utility}
+\end{equation}
+The administrator chooses non-negative weights satisfying $w_q+w_c+w_l=1$. A larger quality weight favours stronger predicted answers; larger cost or latency weights favour less expensive or faster candidates. These preferences apply only within the eligible set. Privacy is not assigned a tunable weight or a finite penalty that might be overridden by another score.
+
+Cost and latency are normalized over the same eligible candidates:
+\begin{equation}
+\widetilde{C}(q,m_k)=
+\frac{C(q,m_k)-C_{\min}}{C_{\max}-C_{\min}+\epsilon},
+\end{equation}
+\begin{equation}
+\widetilde{L}(m_k)=
+\frac{L(m_k)-L_{\min}}{L_{\max}-L_{\min}+\epsilon}.
+\end{equation}
+Here, $C_{\min}$, $C_{\max}$, $L_{\min}$, and $L_{\max}$ are the respective extremes within $M_{\mathrm{eligible}}(q)$, and $\epsilon>0$ prevents division by zero. If all candidates have the same cost or latency, that normalized term is zero for every candidate and does not affect their ordering.
+
+Provided that the eligible set is non-empty, selection is defined as
+\begin{equation}
+m^*=\arg\max_{m_k\in M_{\mathrm{eligible}}(q)} U(q,m_k).
+\end{equation}
+A stable tie-breaking rule, such as lower estimated cost followed by model identifier, makes equal-score decisions reproducible. If no model is eligible, the gateway returns a controlled failure. It must not assume that a local backend is always available or silently relax a privacy rule.
+
+\section{Stage 1: Privacy Screening and Cryptographic Entity Masking}
+\label{sec:stage1-privacy}
+
+Screening runs before cache retrieval or quality prediction. It examines the full request content that could otherwise reach a backend, including selected code and attached textual context. The result is both a processed prompt and a policy decision about where that prompt may be sent.
+
+\subsection{Detection Mechanism}
+
+The Privacy Analyzer combines two kinds of detector:
+\begin{enumerate}
+    \item \textbf{Pattern and checksum checks:} Recognizers look for supported API-token formats, private-key blocks, and database credentials. Examples include AWS access-key identifiers beginning with \texttt{AKIA} and GitHub tokens beginning with \texttt{ghp\_}. These are examples of recognizable formats, not a complete inventory of valid credentials. Checksums can strengthen detection for structured values such as payment-card numbers. The draft's 1.5\,ms scanner budget is retained as a component target to test against the supported input sizes.
+    \item \textbf{Named entity recognition:} Presidio with a configured spaCy pipeline identifies relevant personal entities, such as names and locations. The selected recognizers and their decision thresholds determine the coverage of this stage \cite{ref:Presidio}.
+\end{enumerate}
+
+These checks may be executed concurrently where the implementation permits it. Their outputs must be reconciled before routing so that overlapping detections do not produce conflicting replacements. Uncertain credential detections should follow the conservative local-only path defined in the requirements.
+
+\subsection{Reversible Token Vault Masking}
+
+The gateway distinguishes a routing restriction from a text transformation. A credential or confidential classification restricts the destination even if part of the text can be masked. For personal information that the policy allows to be pseudonymized, the gateway substitutes request-specific placeholders, such as \texttt{<PII\_NAME\_1>}. These labels are placeholders, not UUIDs; a separate vault identifier associates them with the correct request.
+
+The proposed vault encrypts the original values with AES-256-GCM and retains the mapping only for the request's permitted lifetime. Access to the encryption key and mapping is restricted to the restoration path. Logs record the operation and entity counts, rather than the values themselves. Mappings must be released after completion, cancellation, failure, or expiry.
+
+During response delivery, the gateway restores only placeholders found in the current request's mapping. A streaming implementation needs a small buffer because one placeholder may arrive across several chunks. Unrecognized placeholders must not be resolved using another request's vault. The gateway also checks the sanitized content against policy before any cloud dispatch; replacing detected spans alone does not establish that all sensitive context has been removed.
+
+\section{Stage 2: Two-Gate Semantic Caching and Intent Verification}
+\label{sec:stage2-caching}
+
+After screening, the gateway looks for an answer that can be reused. The target is a p95 cache-hit round-trip time below 200\,ms, as specified in NFR-02. Cache access must first be limited to entries allowed for the requesting client, privacy classification, and relevant context. Similar wording is insufficient if the saved response belongs to a different access scope or an expired context.
+
+\subsection{Gate 1: Dense Vector Retrieval (Qdrant ANN)}
+
+Let $\bar q$ denote the prompt after permitted masking. The proposed embedding model, \texttt{all-MiniLM-L6-v2}, produces a 384-dimensional representation \cite{ref:MiniLMModelCard}:
+\begin{equation}
+\mathbf{v}_q=\mathrm{BiEncoder}(\bar q)\in\mathbb{R}^{384}.
+\end{equation}
+The gateway searches a Qdrant HNSW collection for a nearby eligible entry. Similarity between the incoming vector and a candidate vector is calculated as
+\begin{equation}
+\mathrm{sim}(\mathbf{v}_q,\mathbf{v}_c)=
+\frac{\mathbf{v}_q\cdot\mathbf{v}_c}
+{\|\mathbf{v}_q\|_2\|\mathbf{v}_c\|_2}.
+\end{equation}
+The initial threshold is $\theta_1=0.88$. A candidate reaching that value proceeds to the second gate; otherwise, the request is treated as a cache miss. This threshold must be checked on representative coding and general-purpose requests. Long inputs also need an explicit truncation or chunking policy so that essential constraints are not silently omitted from the representation.
+
+\subsection{Gate 2: Cross-Encoder Semantic Consistency Verification}
+
+The second gate examines a candidate more closely. For example, an encryption request and a decryption request can share much of their vocabulary while asking for different behavior. This example motivates a test case; it does not imply a fixed cosine similarity for every embedding model.
+
+The proposed starting checkpoint is \texttt{cross-encoder/ms-marco-MiniLM-L6-v2}. Its model card describes passage ranking, and its raw output is a relevance score rather than a probability of equivalent intent \cite{ref:CrossEncoderModelCard}. It therefore needs task-specific validation and, where necessary, adaptation before it can be used to approve cached answers.
+
+Let $z_{\mathrm{cross}}$ be the raw pair score and $g$ a mapping fitted on labelled validation pairs:
+\begin{equation}
+z_{\mathrm{cross}}=\mathrm{CrossEncoder}(\bar q,q_c),
+\qquad s_{\mathrm{cross}}=g(z_{\mathrm{cross}})\in[0,1].
+\end{equation}
+Mapping a score into this interval does not establish that it is a reliable probability. Calibration and error rates must be evaluated separately. The proposed acceptance threshold is $\theta_2=0.85$ after this validation step.
+
+For a candidate that has already passed the access, context, and expiry checks, the reuse rule is
+\begin{equation}
+\mathrm{CacheResult}(\bar q)=
+\begin{cases}
+\mathrm{Reuse}(q_c), & \mathrm{sim}\geq\theta_1\ \text{and}\ s_{\mathrm{cross}}\geq\theta_2,\\
+\mathrm{Miss}, & \text{otherwise}.
+\end{cases}
+\end{equation}
+The verification stage is intended to reduce incorrect reuse, not eliminate it by assumption. Tests must include negation, opposite operations, changed identifiers, and context-dependent answers. Both erroneous cache hits and unnecessarily rejected valid hits should be measured. Cached payloads must exclude raw credentials and restored personal values; entries with placeholders are reusable only when they can be bound safely to the current request.
+
+\section{Stage 3: Pre-Inference Quality Estimation}
+\label{sec:stage3-quality}
+
+If the cache cannot supply an acceptable answer, the gateway predicts the likely quality of a fresh completion. The purpose is to choose a backend without first paying for several trial answers.
+
+\subsection{DistilDeBERTa Architecture and Training}
+
+The proposed predictor is a compact DeBERTa-based model, referred to in the project as DistilDeBERTa. The planned configuration uses six transformer layers and a hidden size of 768. The exact checkpoint and any distillation procedure must be recorded during implementation; this project name should not be treated as a verified public checkpoint identifier. DeBERTaV3 provides the underlying language-encoder motivation discussed in Chapter~3 \cite{ref:DeBERTaV3}.
+
+The training plan targets approximately 50,000 prompt-response examples drawn from coding, mathematical reasoning, and general-knowledge tasks, including HumanEval, MBPP, GSM8K, and MMLU. Each registered backend must answer a defined set of prompts so that its quality can be scored using appropriate checks. Executable tests can assess coding tasks, while other tasks need documented answer criteria or human review. Scores are normalized into labels $y_k\in[0,1]$.
+
+Training, validation, and test splits must be separated before fitting the predictor or choosing thresholds. Related versions of the same problem should stay in the same split to avoid overstating generalization. The number of unique prompts, number of model responses, and coverage of each backend must be reported separately; 50,000 pairs do not necessarily mean 50,000 different prompts.
+
+For an example with labels for all $K$ registered models, the proposed mean-squared regression objective is
+\begin{equation}
+\mathcal{L}_{\mathrm{reg}}=
+\frac{1}{K}\sum_{k=1}^{K}\bigl(\hat{Q}(\bar q,m_k)-y_k\bigr)^2.
+\end{equation}
+If some backend labels are missing, the loss must be calculated only over observed labels. A forward pass returns the score vector $\widehat{\mathbf{Q}}=[\hat{Q}_1,\ldots,\hat{Q}_K]$, from which the policy engine uses the scores for eligible models. Registering a new endpoint does not automatically provide a trained prediction head for a different model; predictor coverage must be updated or a documented baseline used.
+
+The intended predictor timings are 6--8\,ms on GPU and approximately 12\,ms on CPU. These are targets, not measured results in this chapter. They must be tested together with the other stages: meeting an isolated predictor target does not establish that the full gateway meets its 15\,ms p95 overhead requirement.
+
+\section{Stage 4: Execution Policy Engine and Model Selection}
+\label{sec:stage4-policy}
+
+The policy engine combines the privacy decision, department allowance, backend availability, and quality estimates. It removes prohibited destinations, normalizes cost and latency within the remaining set, and applies Eq.~\ref{eq:utility}. The selected model receives the processed prompt through its serving adapter.
+
+If a department has exhausted its paid allowance, cloud backends are removed before scoring. If an upstream request fails, the gateway may select an eligible local fallback, subject to the same privacy and availability checks. A retry must be recorded explicitly, since it can add cost and delay. Once output has reached the client, a failed stream cannot be silently joined to a different model's answer; the client must be told that the response was interrupted or restarted.
+
+Telemetry records the selected backend, policy version, measured timings, token usage, and result status. Cache storage is considered only after a response completes successfully and passes the storage policy. Any reusable payload must be captured before personal values are restored for display.
+
+\section{Complete Gateway Routing Algorithm}
+\label{sec:algorithm}
+
+Algorithm~\ref{alg:routing} summarizes the normal request path and the checks around it. Helper functions include validation and failure reporting; they do not bypass the privacy or access restrictions when a service fails. The finalization step runs on success, error, or cancellation so that request-scoped vault data is not left behind.
+
+\begin{algorithm}[H]
+\small
+\setstretch{1.05}
+\SetAlgoLined
+\KwData{Request $q$; models $M$; policy $\pi$; thresholds $\theta_1,\theta_2$}
+\KwResult{Response or controlled error; audit record $R$}
+\tcp{Screen the request and establish its permitted destinations}
+$\bar q,V,D\leftarrow\mathrm{ScreenAndMask}(q,\pi)$\;
+$V$ is empty when no reversible mapping is created\;
+$A\leftarrow\mathrm{EligibleModels}(M,D,\pi)$\;
+\tcp{Search only within the permitted cache scope}
+$c,s_1\leftarrow\mathrm{ScopedCacheLookup}(\bar q,D,\pi)$\;
+$\mathit{hit}\leftarrow\mathrm{False}$\;
+\If{$c\neq\emptyset$ \textnormal{and} $s_1\geq\theta_1$}{
+    $s_2\leftarrow g(\mathrm{CrossEncoder}(\bar q,c.\mathrm{prompt}))$\;
+    $\mathit{hit}\leftarrow(s_2\geq\theta_2)\land\mathrm{SafeToReuse}(c,V,D,\pi)$\;
+}
+\eIf{$\mathit{hit}$}{
+    $Y\leftarrow c.\mathrm{sanitizedResponse}$\;
+    $S\leftarrow\mathrm{DeliverWithRestoration}(Y,V)$\;
+    $R\leftarrow\mathrm{MeasuredCacheRecord}()$\;
+}{
+    \eIf{$A=\emptyset$}{
+        $S\leftarrow\mathrm{NoEligibleBackendError}()$\;
+        $R\leftarrow\mathrm{FailureRecord}()$\;
+    }{
+        $\widehat{\mathbf{Q}}\leftarrow\mathrm{PredictQuality}(\bar q,A)$\;
+        $\widetilde{\mathbf{C}},\widetilde{\mathbf{L}}\leftarrow\mathrm{NormalizeWithin}(A,\bar q)$\;
+        $m^*\leftarrow\arg\max_{m\in A}U(\bar q,m)$\;
+        $Y,S,R\leftarrow\mathrm{ServeWithPolicySafeRecovery}(m^*,\bar q,V,A)$\;
+        \If{$R.\mathrm{success}$ \textnormal{and} $\mathrm{SafeToStore}(Y,D,\pi)$}{
+            $\mathrm{StoreScopedCache}(\bar q,Y,D,\pi)$\;
+        }
+    }
+}
+\tcp{Always finalize; never include raw secrets in the audit record}
+$\mathrm{WriteAuditMetadata}(R,D,\pi)$\;
+$\mathrm{ReleaseVault}(V)$\;
+\Return $S$\;
+\caption{Request Processing with Privacy-Constrained Model Selection}
+\label{alg:routing}
+\end{algorithm}
+
+In the algorithm, $D$ is the screening and residency decision, $V$ is the request-scoped vault mapping, and $A$ is the eligible model set. $Y$ represents the response before restoration, while $S$ is the client-facing response. Keeping these representations separate prevents personal values restored for one user from being written into a reusable cache entry. The serving helper performs bounded recovery and returns a clear result status even when generation fails.
+
+\section{Conclusion}
+\label{sec:ch5-conclusion}
+
+The workflow combines privacy screening, verified cache reuse, quality prediction, and policy-based selection. Privacy determines eligibility before quality, cost, and latency are compared. Evaluation must establish whether these stages work reliably together and meet the accuracy, confidentiality, and response-time requirements under load.
+\clearpage

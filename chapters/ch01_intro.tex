@@ -1,0 +1,54 @@
+\chapter{Introduction}
+\label{ch:introduction}
+
+Large Language Models (LLMs) have become an integral component of production systems that help power chatbots, programming assistance tools, and enterprise searches. The strongest models are delivered via a pay-per-use cloud API, while open weight models can be used locally to save money and maintain control of the data. In the process, enterprises must address four competing considerations – the cost of inference, the latency, the quality of outcomes, and the privacy concerns. Leveraging a state-of-the-art cloud model for each inquiry ensures high-quality results at a high cost and latency, while relying solely on local models cuts down on costs but may impair quality in case of complex inquiries. Privacy is not negotiable. Any request that involves personal information protected by GDPR and HIPAA cannot be delegated to a third party.
+
+Addressing these requirements together calls for a gateway that decides, for each request, where it should be processed. This report presents AetherFlow, a privacy-centric, multi-objective LLM gateway placed between client applications and language-model backends. For each request, AetherFlow selects an execution target by maximizing a utility function over quality, cost, latency, and privacy risk, with privacy enforced as a hard constraint.
+%--------------------------------------------------------------
+\section{Purpose of this Document}
+\label{sec:purpose}
+
+This document aims to give a detailed and systematic description of AetherFlow to its audience including developers and users. This document will outline the vision, goals, and requirements of the project to serve as the base for designing and evaluating a privacy-based multi-objective gateway for enterprise LLM routing. Four stages of the pipeline including privacy screening, semantic caching, pre-inference quality estimation, and heterogeneous serving have been discussed in detail along with the requirements, architecture, implementation, and test cases of the system.
+
+%--------------------------------------------------------------
+%--------------------------------------------------------------
+\section{Intended Audience}
+\label{sec:audience}
+
+This report has been written to appeal to individuals with different levels of technical interest in AetherFlow, and each individual may find certain chapters to be of particular interest to his/her role. The intended readers of this report are:
+
+\begin{enumerate}
+    \item Project supervisors and FYP evaluation committees, who may be able to evaluate the contribution of the project from the problem formulation, methodology, experimental evaluation, and engineering aspects.
+    \item Software architects and DevOps engineers, who may be able to plan the deployment of AetherFlow from the gateway architecture, asynchronous proxy design, abstraction for local and cloud serving, and technology stack (FastAPI, Qdrant, Presidio, vLLM, and Ollama).
+    \item Information security and compliance officers, who may evaluate the privacy screening pipeline, PII masking, local-only enforcement for confidential input data, and auditing process.
+\end{enumerate}
+
+Basic knowledge of LLMs and web service architectures is assumed by the readers.
+
+%--------------------------------------------------------------
+\section{Definitions, Acronyms, and Abbreviations}
+\label{sec:definitions}
+
+\begin{flushleft}
+\setlength{\parindent}{0pt}
+\setlength{\parskip}{0pt}
+\textbf{AetherFlow:} The privacy-centric, multi-objective LLM gateway developed in this project. \\
+\textbf{LLM:} Large Language Model. \\
+\textbf{API:} Application Programming Interface. \\
+\textbf{PII:} Personally Identifiable Information. \\
+\textbf{NER:} Named Entity Recognition. \\
+\textbf{GDPR:} General Data Protection Regulation. \\
+\textbf{HIPAA:} Health Insurance Portability and Accountability Act. \\
+\textbf{ANN:} Approximate Nearest Neighbor. \\
+\textbf{HNSW:} Hierarchical Navigable Small World. \\
+\textbf{SSE:} Server-Sent Events. \\
+\textbf{BYOK:} Bring Your Own Key. \\
+\textbf{SRS:} Software Requirement Specification.
+\end{flushleft}
+
+%--------------------------------------------------------------
+%--------------------------------------------------------------
+\section{Conclusion}
+\label{sec:ch1-conclusion}
+
+To summarize, AetherFlow has been built to address one of the key issues that come up while using enterprise LLMs, that is, the balancing act of the cost, latency, output quality, and privacy issues of inference. This has been achieved by the incorporation of a privacy-focused multi-objective gateway between client applications and language-model backends wherein decisions are taken through a four-step pipeline, which includes privacy verification, semantic caching, pre-inference quality estimation, and heterogeneous serving with the constraint of privacy being considered as a hard constraint. Unlike other approaches like RouteLLM and LiteLLM, all the aforementioned factors have been taken into consideration while deciding the execution target.

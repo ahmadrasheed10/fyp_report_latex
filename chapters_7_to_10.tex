@@ -1,0 +1,196 @@
+\chapter{Implementation and Test Cases}
+\label{ch:implementation}
+
+The FYP-I implementation addresses the model-selection subproblem of AetherFlow: selecting an eligible language model for a query while exposing the effects of quality, cost, latency, and privacy constraints. The deployed research demonstrator is named OptiRoute AI and is available at \url{https://optiroute-ai-phi.vercel.app/}. It provides a browser interface, a JSON routing API, and access to the recorded benchmark results. This component extends the earlier VS Code reference client described in the project design. The complete gateway, including semantic caching, temporary value protection, persistent usage records, and live provider execution, remains part of the FYP-II integration scope.
+
+\section{Implementation}
+
+\subsection{Web Interface and API}
+The browser application uses a React client to obtain model information, evaluation tables, policy settings, and example queries from the service. A user enters a query, optionally supplies its capability class, and selects a routing policy. The interface submits the request to \texttt{/api/route} and displays the chosen model, predicted quality, estimated cost, latency information, and an explanation of the decision. Separate views expose the model pool, policy comparisons, Pareto frontier, and privacy configuration.
+
+The service exposes an OpenAPI schema and FastAPI-generated interactive documentation. Its request schema validates a nonempty query of at most 20,000 characters. Optional fields include \texttt{query\_class}, \texttt{router}, \texttt{mode}, \texttt{threshold}, \texttt{quality\_floor}, \texttt{latency\_budget\_ms}, and \texttt{sensitive}. A legacy threshold must lie between 0.50 and 0.99; a quality floor must lie between zero and one, and a supplied latency budget must be positive. Invalid inputs produce an HTTP 422 response.
+
+\begin{table}[H]
+\centering\small
+\caption{Public interfaces of the implemented routing demonstrator}
+\begin{tabular}{|p{0.30\textwidth}|p{0.60\textwidth}|}
+\hline
+\textbf{Endpoint} & \textbf{Role} \\ \hline
+\texttt{POST /api/route} & Select a model using the legacy or multi-objective router. \\ \hline
+\texttt{POST /api/sensitivity} & Classify a query using the configured local sensitivity rules. \\ \hline
+\texttt{GET /api/models} & Return eight registered models and their benchmark summaries. \\ \hline
+\texttt{GET /api/results} & Return baseline comparisons, threshold curves, test results, and split metadata. \\ \hline
+\texttt{GET /api/objectives} & Return multi-objective policy settings and validation measurements. \\ \hline
+\texttt{GET /api/pareto} & Return the frontier calculated from training-split aggregates. \\ \hline
+\texttt{GET /api/privacy} & Return deployment eligibility rules and sensitive-query approvals. \\ \hline
+\end{tabular}
+\label{tab:implemented_api}
+\end{table}
+
+\subsection{Model Registry and Query Representation}
+The registered pool contains Llama-3.1-8B-Instruct, Qwen3-8B, DeepSeek-v3-0324, Gemini-2.5-Flash, GPT-4.1, Claude-Sonnet-4, Gemini-2.5-Pro, and GPT-5. These names identify the models in the recorded experiment rather than a guarantee that every provider is currently connected for live generation. The registry supplies measured cost and latency statistics and per-class correctness information. The five capability classes are Coding, Competitive Math, General Knowledge, Mathematical Reasoning, and Scientific Questionnaire.
+
+The routing response exposes a query-class estimate, probabilities for easy, medium, and hard difficulty tiers, and per-model correctness predictions. These predictions support selection before model execution. The deployed metadata identifies frozen router weights in \texttt{routing/models/router\_weights.npz}; calibration and model statistics are fitted on the training split. The exact feature extractor and training procedure require the training source and execution records for full reproducibility and are not inferred from the web interface.
+
+\subsection{Legacy Learned Cascade}
+The legacy route uses a confidence threshold to decide whether an eligible lower-cost model is acceptable. The selected operating threshold is approximately 0.95. If no candidate clears the threshold, the response indicates escalation to the strongest model. The result includes \texttt{chosen\_model}, \texttt{is\_fallback}, predicted correctness values, and human-readable reasons. This implements a quality--cost selection step without requiring an additional language-model call to make the routing decision.
+
+\subsection{Multi Objective Policy Selection}
+The second router exposes Economy, Balanced, Speed, Quality, and Private modes. The API receives \texttt{router=multi\_objective} with the requested mode. Cost and latency are normalized using the training statistics. The deployed configuration supplies mode-specific cost and latency weights and per-model calibration parameters. Economy emphasizes cost; Balanced combines the objectives; Speed imposes a latency eligibility budget; Quality prioritizes predicted correctness; and Private restricts eligibility to approved models before selection.
+
+A configured quality target is not evidence that every policy attains it. The validation metadata explicitly marks Economy and Speed as failing their validation quality floor, while Balanced meets it. Quality and Private do not have the same configured floor. The legacy mode names and thresholds returned by \texttt{/api/modes} are separate from the five multi-objective policies returned by \texttt{/api/objectives}; their measurements must not be interchanged.
+
+\subsection{Privacy Eligibility and Sensitivity Rules}
+The deployed privacy configuration approves only Llama-3.1-8B-Instruct and Qwen3-8B for sensitive queries. Private mode selects within this set. A sensitive request submitted to Balanced mode is also subject to the approved-model restriction. The sensitivity endpoint uses six configured patterns and keywords such as confidential, medical record, and proprietary. These rules provide an initial screening component; they do not constitute a measured privacy-detection benchmark.
+
+The policy also exposes settings to disable external models or refuse sensitive queries. Provider data retention is described as administrator-configured and is not independently verified. Selection of an approved model establishes the routing decision only. Actual local execution, network isolation, temporary mapping deletion, and the absence of sensitive data in logs require separate integration and security tests.
+
+\subsection{Decision Output and Integration Boundary}
+For a multi-objective request, the response identifies the chosen model, policy mode, predicted quality, routing score, estimated cost, and latency breakdown. The latency object distinguishes live router overhead from a model-inference estimate based on benchmark averages. Therefore, the displayed end-to-end estimate is not a measured live generation time for an arbitrary query. The current routing demonstration does not by itself establish that an answer was generated by the selected provider.
+
+The next integration step is to connect this selection component to the FastAPI gateway pipeline and the VS Code client. The gateway will apply privacy eligibility, perform verified cache lookup where permitted, select an eligible model, execute the appropriate adapter, and return the generated response. PostgreSQL usage records, Qdrant cache storage, the Privacy Vault, authentication, and recovery behavior remain integration and validation work.
+
+\subsection{Request Processing Procedure}
+The implemented API begins by validating the request fields. For a legacy request, the service obtains the capability and difficulty estimates, evaluates model correctness predictions against the chosen threshold, and returns an acceptable selection or the strongest-model fallback. For a multi-objective request, it resolves the selected mode and applicable privacy restrictions, limits the candidate set, and uses the configured quality, cost, and latency criteria to select from the eligible models. The returned explanation allows a user to inspect the selected destination and the reason for the decision. The procedure ends with a routing response; actual provider execution is a separate integration step.
+
+The policy configuration distinguishes hard restrictions from preferences. A privacy restriction removes unapproved models from consideration, while cost and latency weights express preferences within the remaining choices. Speed mode additionally applies a latency eligibility budget. This ordering matters because a low-cost external model must not become eligible merely through a favorable score. The demonstrator exposes the decisions needed to inspect this behavior, while comprehensive failure and fallback testing remains necessary in the integrated gateway.
+
+\section{Conclusion}
+The FYP-I implementation turns the routing concept into an accessible software component with validated request fields, two selection approaches, configurable privacy eligibility, and explanatory output. Its main contribution is a working decision interface for studying model-selection tradeoffs. The remaining work is to connect these decisions to real inference, verified caching, temporary data protection, persistent records, and the developer client, and then perform formal integration and acceptance testing. Detailed test-case design, execution tables, and test metrics will be added in FYP-II.
+
+\clearpage
+\setcounter{chapter}{8}
+
+\chapter{Experimental Results and Discussion}
+\label{ch:results}
+
+This chapter presents the FYP-I routing experiments exposed by the OptiRoute AI evaluation service. It reports the completed model-selection study and the observed API checks rather than postponing all evaluation to FYP-II. The benchmark tables and split manifest were retrieved from \url{https://optiroute-ai-phi.vercel.app/api/results} on 11 November 2026. Policy configuration and frontier information were obtained from the corresponding objectives and Pareto endpoints. The values below are reported experiment outputs; the full training and benchmark runs were not repeated during report preparation.
+
+\section{Experimental Setup}
+
+\subsection{Dataset and Data Separation}
+The aligned dataset contains 1,887 queries evaluated across eight models and five capability classes. Its split manifest records 1,322 training queries, 283 validation queries, and 282 test queries, using seed 42 and nominal fractions of 70\%, 15\%, and 15\%. Stratification combines capability class and difficulty tier. Easy queries have six to eight correct model responses, medium queries have three to five, and hard queries have zero to two.
+
+The manifest records 246 duplicate identifiers associated with an auxiliary aligned dataset, an empty list of those identifiers in validation or test, and an instruction to exclude them from auxiliary training data. This provides a documented leakage-control rule. Independent verification still requires the raw identifiers, collection scripts, and immutable split files. The current outputs should not be described as completed results for every benchmark proposed in Chapter 5; those datasets require their own collection and scoring records.
+
+\subsection{Training Validation and Test Roles}
+The deployed metadata states that model statistics and calibration are fitted on training data, policies are verified on validation data, and final comparisons use a sealed test split. The learned cascade uses a validation-selected threshold of 0.95. The comparison below uses the baseline report and multi-objective evaluation report from the same test-results response. The separate oracle report and model-registry averages have different aggregate values and are not substituted into these test tables. The Pareto frontier is explicitly calculated from training aggregates.
+
+\subsection{Evaluation Metrics}
+Accuracy is the percentage of test queries with a correct selected-model response under the experiment's recorded labels. Relative quality is the router's accuracy divided by the strongest-model baseline accuracy. Cost reduction is measured relative to the same baseline:
+\[
+Q_{\mathrm{relative}}=100\frac{A_{\mathrm{router}}}{A_{\mathrm{strongest}}},\qquad
+S_{\mathrm{cost}}=100\left(1-\frac{C_{\mathrm{router}}}{C_{\mathrm{strongest}}}\right).
+\]
+The report retains the API's recorded cost-per-query values and latency in seconds. These are experiment-accounting values rather than current provider price quotations. For the legacy cascade, the reported 94.8\% relative quality does not mean 94.8\% absolute accuracy. The absolute accuracy is 84.04\% against the 88.65\% strongest-model baseline.
+
+\section{Baseline and Learned Cascade Results}
+\begin{table}[H]
+\centering\small
+\caption{Routing policies on the 282-query test split}
+\begin{tabular}{|p{0.28\textwidth}|r|r|r|r|}
+\hline
+\textbf{Policy} & \textbf{Accuracy \%} & \textbf{Cost/query} & \textbf{Saving \%} & \textbf{Latency s} \\ \hline
+Always strongest & 88.65 & 0.019061 & 0.0 & 0.763 \\ \hline
+Always cheapest & 42.20 & 0.000013 & 99.9 & 0.311 \\ \hline
+Random & 74.11 & 0.015865 & 16.8 & 1.369 \\ \hline
+Class based & 81.91 & 0.009377 & 50.8 & 3.654 \\ \hline
+Prior cascade & 83.69 & 0.009979 & 47.6 & 2.799 \\ \hline
+kNN cascade & 87.94 & 0.018711 & 1.8 & 0.819 \\ \hline
+Learned cascade & 84.04 & 0.006023 & 68.4 & 3.490 \\ \hline
+Oracle & 94.68 & 0.003659 & 80.8 & 0.602 \\ \hline
+\end{tabular}
+\label{tab:baseline_results}
+\end{table}
+
+The learned cascade reduces recorded average cost from 0.019061 to 0.006023 per query, a reduction of 68.4\%. It retains 94.8\% of the strongest baseline's accuracy, with an absolute loss of 4.61 percentage points. Its average latency rises from 0.763 to 3.490 seconds, an increase of 2.727 seconds. Thus, the main result supports a substantial cost reduction with a measurable accuracy and latency tradeoff.
+
+Always selecting the cheapest model reduces cost by 99.9\% but lowers accuracy to 42.20\%. This demonstrates why price alone is insufficient. The kNN cascade obtains 87.94\% accuracy but saves only 1.8\%, while the class-based policy saves 50.8\% at 81.91\% accuracy. The learned cascade occupies a different operating point rather than outperforming every alternative on every objective.
+
+The oracle reaches 94.68\% accuracy and an 80.8\% cost reduction. It uses recorded correctness information to choose retrospectively and is an upper-bound comparator, not a deployable selection policy. Its ability to exceed GPT-5 accuracy reflects complementary successes across models. The 10.64 percentage-point gap between the oracle and learned cascade indicates remaining selection headroom.
+
+\section{Multi Objective Results}
+\begin{table}[H]
+\centering\small
+\caption{Multi-objective policies on the same test split}
+\begin{tabular}{|p{0.28\textwidth}|r|r|r|r|}
+\hline
+\textbf{Policy} & \textbf{Accuracy \%} & \textbf{Cost/query} & \textbf{Saving \%} & \textbf{Latency s} \\ \hline
+Always cheapest & 42.20 & 0.000013 & 99.9 & 0.311 \\ \hline
+Always GPT-5 & 88.65 & 0.019061 & 0.0 & 0.763 \\ \hline
+Legacy cascade & 84.04 & 0.006023 & 68.4 & 3.490 \\ \hline
+MO economy & 80.85 & 0.003334 & 82.5 & 2.401 \\ \hline
+MO balanced & 86.17 & 0.016260 & 14.7 & 0.624 \\ \hline
+MO speed & 77.30 & 0.003038 & 84.1 & 0.164 \\ \hline
+MO quality & 86.52 & 0.046992 & -146.5 & 1.615 \\ \hline
+MO private & 74.82 & 0.000759 & 96.0 & 3.832 \\ \hline
+\end{tabular}
+\label{tab:mo_results}
+\end{table}
+
+Balanced mode obtains 86.17\% accuracy, a 14.7\% cost reduction, and 0.624-second average latency. Relative to the legacy cascade, it improves accuracy by 2.13 percentage points and reduces mean latency by 2.866 seconds, but uses more expensive selections. It is a suitable candidate when latency and correctness matter more than the cascade's larger cost saving.
+
+Economy saves 82.5\% at 80.85\% accuracy. Speed produces the lowest average latency among these policies, 0.164 seconds, but accuracy falls to 77.30\%. The policy metadata also marks both modes as failing their validation quality floor. Their names describe optimization preferences rather than a guarantee of acceptable quality.
+
+Quality mode reaches 86.52\% accuracy with cost 0.046992 per query, corresponding to a negative cost reduction of $-146.5\%$: its cost is approximately 2.47 times the GPT-5 baseline. Its learned predictions therefore do not guarantee that maximizing predicted quality will outperform the strongest model on held-out correctness. This result motivates additional calibration and error analysis.
+
+Private mode selects only the two approved local-model entries and reports 74.82\% accuracy, a 96.0\% cost reduction, and 3.832-second mean latency. Its test routing mix is 7.4\% Llama and 92.6\% Qwen. The reported privacy-filtered value of 75\% is consistent with the exclusion of six of eight model candidates under the policy; it must not be interpreted as a privacy-detection accuracy or a percentage of protected requests.
+
+\subsection{Latency Distribution}
+Mean latency alone conceals tail behavior. The legacy cascade has p95 latency of 13.036 seconds and p99 latency of 44.465 seconds, compared with 1.042 and 18.803 seconds for Always-GPT-5. Balanced records p95 of 1.025 seconds and p99 of 18.803 seconds. Private mode has p95 of 14.048 seconds and p99 of 47.233 seconds. These recorded distributions identify slow selections as a practical concern even when average cost is low. A live deployment must separately measure queueing, network overhead, cold starts, and provider retries.
+
+\section{Preliminary Prototype Observations}
+The prototype API returned model-selection decisions through both routing approaches. Private mode and an explicitly sensitive request selected models within the approved set, while invalid inputs were rejected by request validation. These observations support the implemented decision workflow, but do not establish generated-answer quality, comprehensive sensitive-data detection, or privacy during actual provider execution. The reported inference latency for arbitrary queries is a benchmark-based estimate. Formal test-case documentation and complete system testing remain part of FYP-II.
+
+\section{Limitations and Threats to Validity}
+The test set contains 282 queries and uneven capability-class strata, including small Competitive Math groups. Aggregate differences may be sensitive to a few outcomes. Confidence intervals and paired significance tests are not included in the published response, so small accuracy differences should be interpreted cautiously. The report does not claim that the observed policy ranking generalizes to every workload.
+
+The retrieved service supplies aggregate evaluation outputs and provenance metadata. Raw responses, correctness adjudication, exact model versions, collection hardware, timestamps, token accounting, and complete training logs remain necessary for independent reproduction. Model-registry, training-frontier, validation, and test averages differ because they represent distinct scopes; mixing them would distort the comparison. Historical benchmark latency and cost are also insufficient to predict current production behavior.
+
+Privacy results concern model eligibility. They do not establish provider retention guarantees, comprehensive sensitive-data recognition, local network containment, or correct deletion of temporary mappings. Semantic-cache hit rate, cache correctness, Privacy Vault behavior, full VS Code integration, and failure recovery have no completed end-to-end measurements in this evaluation. They remain explicit FYP-II tasks.
+
+\section{Conclusion}
+The FYP-I results support the feasibility of routing among models with different strengths and resource costs. The learned cascade achieves the reported 68.4\% cost reduction at 94.8\% relative quality, with increased latency. Multi-objective routing exposes additional tradeoffs: Balanced improves latency and accuracy relative to the cascade at higher cost, while Economy, Speed, and Private accept greater quality losses. These findings guide the remaining integration and evaluation work.
+
+\chapter{Conclusion and Future Work}
+\label{ch:conclusions}
+
+This chapter reviews the FYP-I contribution and sets out the remaining work for FYP-II.
+
+\section{Conclusion}
+The problem and vision establish the need to select models according to workload and confidentiality. The literature identifies a gap between learned routing and privacy-aware execution. The requirements define the expected gateway behavior. The methodology sets out how selection and reuse should be evaluated. The design connects the client, routing, privacy, and storage components. Implementation provides an initial client and selection prototype. The results show useful tradeoffs, while the full gateway remains partially complete. The key finding is that privacy decides which models are allowed before cost, speed, or quality preferences are applied.
+
+\section{Challenges and Work Left Out}
+Routing objectives conflict, so no single policy wins on cost, quality, and speed. The labelled dataset is small, and some capability classes contain few queries. Labelling is expensive because several models must answer each query and their responses must be scored. This limits calibration, error analysis, and conclusions about unseen workloads. A routing decision alone cannot establish system correctness: privacy, caching, fallback, and logging depend on each other.
+
+\begin{table}[H]
+\centering\small
+\caption{Work deferred to FYP-II}
+\begin{tabular}{|p{0.34\textwidth}|p{0.56\textwidth}|}
+\hline
+\textbf{Item} & \textbf{Why it was deferred} \\ \hline
+Live local and cloud execution & Requires a stable, reproducible selection baseline first. \\ \hline
+Masking and Privacy Vault integration & Data movement can be verified only after real execution is connected. \\ \hline
+Two-step semantic cache & Unsafe without privacy policy enforcement and user isolation. \\ \hline
+Telemetry, authentication, and failure recovery & Depend on the integrated gateway. \\ \hline
+Latency targets and confidence intervals & Require an integrated build for timing and raw experiment records for statistical analysis. \\ \hline
+\end{tabular}
+\label{tab:deferred_work}
+\end{table}
+
+\section{Plan for FYP-II}
+FYP-II will begin by fixing the versions of the code, dataset, model weights, and configuration so that the existing results can be reproduced. The selector will then be connected to the gateway through local and cloud model adapters, with controlled handling of timeouts and provider outages. Privacy screening, temporary value protection, and the two-step semantic cache will be integrated and checked to ensure that restricted data stays within approved endpoints, users remain isolated, and misleading cache matches are rejected. Usage records, authentication, and the VS Code client will complete the request flow without storing secrets. The labelled dataset will be expanded and balanced across capability classes, followed by predictor calibration and policy tuning using validation data only. The integrated system will then undergo benchmark, privacy, cache, concurrency, and failure testing, with confidence intervals reported for held-out results. The phase will end with defect correction, deployment packaging, and an updated report and demonstration that document the system's limitations.
+
+\section{Recommendations for Future Work}
+\begin{enumerate}
+\setlength{\itemsep}{0pt}
+\setlength{\parsep}{0pt}
+\item Send a query to a stronger model when the router is unsure whether a cheaper model can answer it correctly.
+\item Improve model selection for each type of task, and study cases where a cheaper model answers correctly but the strongest model does not.
+\item Improve sensitive-data detection so it does not rely only on keywords. Test the cache with similar-looking queries that need different answers.
+\item Find and reduce the causes of unusually slow responses from local models.
+\item Test newer model versions using realistic queries and request volumes.
+\end{enumerate}
+
+\section{Final Conclusion}
+The approach is viable, but the full gateway is not yet built. FYP-II must deliver a reproducible baseline, end-to-end privacy, verified cache reuse, and client-to-model integration. These must be evaluated together under the same conditions.

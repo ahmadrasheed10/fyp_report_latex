@@ -1,0 +1,199 @@
+\chapter{Literature Review / Related Work}
+
+Choosing a language model involves more than comparing benchmark scores. A model that answers a difficult question well may be too costly for routine requests, while a locally hosted alternative may be preferable when a prompt contains confidential information. AetherFlow is concerned with these decisions at the point where an application submits a request. This chapter examines the research and tools that inform its design.
+
+The review covers ten contributions in five areas: model routing, quality prediction, semantic retrieval, sensitive-data handling, and inference infrastructure. Each entry explains the contribution, considers its limits, and identifies what it means for AetherFlow. Research findings are distinguished from the project's proposed design choices; the performance of the complete gateway must be established through its own evaluation.
+
+\section{Definitions, Acronyms, and Abbreviations}
+
+\noindent\textbf{LLM (Large Language Model):} A language model used here to interpret prompts and generate responses.
+
+\noindent\textbf{API (Application Programming Interface):} The interface through which the gateway communicates with a model service.
+
+\noindent\textbf{PII (Personally Identifiable Information):} Information that identifies, or can help identify, a person. Developer credentials are also sensitive, although they are not necessarily PII.
+
+\noindent\textbf{NER (Named Entity Recognition):} A method for identifying entities, such as people and locations, in text.
+
+\noindent\textbf{DeBERTa:} Decoding-enhanced BERT with disentangled attention, a transformer architecture used for language understanding.
+
+\noindent\textbf{Bi-encoder:} An encoder arrangement that represents two texts separately, allowing their vectors to be compared efficiently.
+
+\noindent\textbf{Cross-encoder:} A model that processes a pair of texts together to estimate a relationship such as relevance or consistency.
+
+\noindent\textbf{ANN / HNSW:} Approximate nearest-neighbour search retrieves nearby vectors without exhaustively comparing every item. Hierarchical Navigable Small World graphs are one approach to this search.
+
+\noindent\textbf{Cascade:} A sequence that tries another model when an earlier answer is inadequate.
+
+\noindent\textbf{Routing:} Choosing which model should handle a request. In AetherFlow's proposed normal path, this choice is made before answer generation.
+
+\noindent\textbf{SLM (Small Language Model):} A relatively compact language model. The term does not imply a fixed parameter limit.
+
+\noindent\textbf{TSP / LPU:} Tensor Streaming Processor and Language Processing Unit, terms associated with Groq's inference hardware.
+
+\noindent\textbf{MLA (Multi-head Latent Attention):} An attention mechanism that uses compressed latent representations for key-value information.
+
+\noindent\textbf{MoE (Mixture of Experts):} A model architecture that activates selected expert components for each token.
+
+\noindent\textbf{Execution Policy Engine:} The AetherFlow component intended to compare quality, cost, and latency after excluding backends prohibited by the privacy policy.
+
+\section{Detailed Literature Review}
+
+The reviewed work approaches model selection from several directions. Some methods predict which model is suitable from the prompt alone; others first generate an answer and assess whether it can be trusted. Retrieval and privacy tools address different parts of the same request path. These distinctions matter because combining individually useful components does not automatically produce an efficient gateway. Their processing costs, failure modes, and assumptions must also fit together.
+
+\subsection*{Intelligent LLM Routing, Cascading, and Benchmarking}
+
+Routing research asks when an additional model call is worth its cost. The studies below differ in the evidence available at that decision point and in how they evaluate a successful selection.
+
+\subsection{RouteLLM: Learning to Route LLMs with Preference Data}
+\subsubsection{Summary of the research item}
+Ong et al.\ \cite{ref:RouteLLM} train routers to choose between a stronger model and a cheaper alternative. Human preference data, supplemented through data augmentation, provides a signal about when the stronger model is likely to be useful. The selection is based on the incoming request, so the system need not generate both answers before choosing a backend.
+
+\subsubsection{Critical analysis}
+The study offers evidence that learned selection can reduce spending while retaining response quality on the evaluated tasks. It also examines transfer to different model pairs. Its two-model formulation is useful for a controlled comparison, but an enterprise deployment may need to choose among several eligible services. Moreover, a preference estimate alone does not determine whether a destination is permitted to receive a particular prompt. Privacy and service availability require additional policy decisions.
+
+\subsubsection{Relationship to the proposed work}
+AetherFlow adopts the idea of making an informed choice before generation. The proposed extension is to score several backends and compare those scores with cost and latency information. A useful evaluation should therefore compare the complete policy against a simpler two-model router, establishing whether the added complexity produces a worthwhile improvement.
+
+\subsection{FrugalGPT: Cascaded Language Model Inference}
+\subsubsection{Summary of the research item}
+Chen, Zaharia, and Zou \cite{ref:FrugalGPT} discuss prompt adaptation, model approximation, and model cascades as ways to reduce inference costs. Their FrugalGPT cascade learns which model combinations to use and whether an answer is good enough to accept. If an early response is inadequate, another model can be consulted. The reported experiments include settings with cost reductions of up to 98\% while matching the best individual model's performance.
+
+\subsubsection{Critical analysis}
+The advantage of a cascade is that it judges an actual response instead of relying entirely on a prediction about the prompt. Escalation, however, adds another generation step and potentially another network round trip. The resulting delay depends on how often escalation occurs and how long each call takes. This is a trade-off to measure, rather than a reason to dismiss cascades for every interactive application. The reported savings also depend on the study's tasks and pricing assumptions.
+
+\subsubsection{Relationship to the proposed work}
+AetherFlow proposes one initial generation backend for each uncached request. This may avoid repeated generation, but it places more responsibility on the quality predictor. Comparing that policy with a cascade would show when earlier selection saves time and when response-based checking offers better accuracy.
+
+\subsection{Self-REF: Learning to Route LLMs with Confidence Tokens}
+\subsubsection{Summary of the research item}
+Chuang et al.\ \cite{ref:SelfREF} investigate whether a model can provide a useful indication of its own reliability. Their Self-Reflection with Error-based Feedback method, or Self-REF, trains models to express confidence through dedicated tokens. A score derived from these tokens supports decisions about accepting an answer, rejecting it, or asking another model. The authors report improvements over alternatives such as verbal confidence statements and conventional token-probability measures.
+
+\subsubsection{Critical analysis}
+This approach connects routing to a model's assessment of its answer. It requires a trained confidence mechanism, however, and that mechanism must be evaluated on the tasks where it will be used. Obtaining confidence also involves running the model; it is not equivalent to a separate prompt-only prediction. When escalation follows, the total request cost includes this initial processing. Confidence should therefore be assessed together with correctness and execution overhead.
+
+\subsubsection{Relationship to the proposed work}
+Self-REF provides a useful comparison for AetherFlow's proposed independent predictor. The project needs to determine whether a cheaper estimate made before generation is accurate enough to support routing. The relevant comparison is the balance between prediction errors and saved inference work, rather than confidence scores in isolation.
+
+\subsection{Confident or Seek Stronger: Uncertainty-Based On-Device LLM Routing}
+\subsubsection{Summary of the research item}
+Chuang et al.\ \cite{ref:ConfidentOrSeekStronger} study how uncertainty estimates can guide requests from an on-device model to a stronger model. Their investigation covers more than 1,500 settings and examines how uncertainty relates to answer correctness. They also propose a calibration-data construction approach to improve routing on new downstream tasks.
+
+\subsubsection{Critical analysis}
+A valuable finding is that routing depends on the alignment between uncertainty and correctness. A confidence threshold cannot simply be assumed to work equally well for every model and uncertainty measure. The study also draws attention to generalization, which matters when deployment prompts differ from calibration data. For AetherFlow, a further operational requirement is deciding whether remote processing is allowed at all. Low confidence can justify seeking a better answer, but it cannot by itself authorize sending confidential content elsewhere.
+
+\subsubsection{Relationship to the proposed work}
+The proposed gateway similarly combines local and remote backends. Its policy should first identify permitted destinations and then compare their expected usefulness. Evaluation should include sensitive requests for which the most capable cloud model is unavailable under policy, exposing the quality cost of that restriction.
+
+\subsection{LLMRouterBench: A Massive Benchmark and Unified Framework for LLM Routing}
+\subsubsection{Summary of the research item}
+Li et al.\ \cite{ref:LLMRouterBench} introduce a common evaluation framework covering more than 400,000 instances from 21 datasets and 33 models. It includes ten routing baselines and supports comparisons of performance, cost, and latency. The study finds complementary strengths across models, but also reports that several routing methods do not reliably outperform a simple baseline.
+
+\subsubsection{Critical analysis}
+These results qualify the assumption that a more elaborate router must be better. The gap between evaluated routers and an oracle indicates that selecting the right model remains difficult even when useful alternatives exist. The benchmark also suggests that careful model selection can matter more than continually expanding the candidate pool. Although it supports latency-aware analysis, benchmark measurements do not replace testing under the project's own network conditions and concurrent workload.
+
+\subsubsection{Relationship to the proposed work}
+AetherFlow should be evaluated against fixed-model choices and simple routing rules as well as learned alternatives. Controlled comparisons can then establish what the cache, predictor, and policy engine each contribute. Load testing is additionally needed to assess whether these benefits persist when requests arrive concurrently.
+
+\subsection*{Pre-Inference Quality and Capability Prediction}
+
+A prompt-based predictor is attractive when generating a trial answer would be expensive. Its usefulness depends on whether its training labels reflect the models and requests encountered in deployment.
+
+\subsection{DeBERTaV3: A Language Encoder for Quality Prediction}
+\subsubsection{Summary of the research item}
+He, Gao, and Chen \cite{ref:DeBERTaV3} improve DeBERTa's pre-training by using replaced-token detection and gradient-disentangled embedding sharing. The method develops representations for language-understanding tasks and is evaluated across established benchmarks. It provides a possible encoder foundation for a downstream predictor, rather than a ready-made system for estimating the quality of other language models.
+
+\subsubsection{Critical analysis}
+Strong language-understanding results justify investigating this architecture, but they do not establish its accuracy as an LLM router. That use requires labelled examples connecting prompts to the performance of each candidate backend. Checkpoint size, input length, hardware, and batching also affect prediction time. A distilled variant should therefore be assessed as its own trained component, rather than assigned the original paper's results.
+
+\subsubsection{Relationship to the proposed work}
+AetherFlow proposes fine-tuning a compact DistilDeBERTa-based predictor to estimate backend quality before generation. Its training data, scoring targets, and held-out evaluation must be documented. The intended latency budget is a design target until measured on the deployment hardware; the encoder paper alone cannot substantiate a particular millisecond response time for this gateway.
+
+\subsection*{Semantic Vector Caching and Verification}
+
+Reusing a previous answer can avoid a model call altogether. The difficult part is establishing that the answer remains appropriate for the new request, including its constraints and context.
+
+\subsection{Sentence-BERT and Two-Gate Semantic Caching}
+\subsubsection{Summary of the research item}
+Reimers and Gurevych \cite{ref:SBERT} introduce Sentence-BERT, which encodes sentences into vectors that can be compared using cosine similarity. Encoding texts separately makes repeated retrieval more practical than jointly processing every possible pair. The work provides a basis for finding related requests, although it does not itself define AetherFlow's two-stage cache.
+
+\subsubsection{Critical analysis}
+Similarity is useful for retrieving candidates, but it does not establish that their answers are interchangeable. For example, requests to enable and disable a feature may share most of their wording while requiring different actions. Such examples motivate targeted cache tests; they do not establish a universal similarity threshold. Retrieval speed also depends on the index, collection size, and hardware, so it should be measured in the intended deployment.
+
+\subsubsection{Relationship to the proposed work}
+AetherFlow proposes retrieving candidates with sentence embeddings and then applying a cross-encoder check before reuse. The second stage is intended to reduce unsuitable matches, not guarantee their elimination. Evaluation should report both incorrect reuse and valid reuse rejected by the verifier, alongside the extra processing time. Relevant user context and access permissions must also remain part of cache eligibility.
+
+\subsection*{Enterprise Privacy, Anonymization, and Prompt Security}
+
+A model's expected answer quality is only one part of a routing decision. The gateway must also determine which data a request contains and which services are permitted to process it.
+
+\subsection{Microsoft Presidio: Sensitive-Data Detection and Anonymization}
+\subsubsection{Summary of the research item}
+Presidio \cite{ref:Presidio} provides configurable tools for detecting and transforming sensitive information. Its detection pipeline can combine language models, pattern matching, and custom recognizers. Detected spans can then be processed using operations such as redaction or replacement. This separation allows applications to adapt detection and handling to their own data.
+
+\subsubsection{Critical analysis}
+Configurability is valuable because personal information and developer secrets take many forms. However, coverage depends on the selected recognizers, language support, and configuration. An application cannot assume that every credential or sensitive passage will be detected. Replacing an identified value also does not prove that the remaining context is safe to disclose. These limits make detection one part of a broader privacy policy.
+
+\subsubsection{Relationship to the proposed work}
+AetherFlow proposes custom recognizers for developer credentials alongside Presidio's existing detection mechanisms. Its design also includes a protected token mapping for restoring masked entities. That mapping, its lifetime, and response restoration are gateway responsibilities requiring separate tests. Requests classified as confidential are intended to remain local even when a cloud model has a higher predicted quality score.
+
+\subsection*{Hardware and Model Serving Backends}
+
+Routing decisions depend partly on how a model is served. Hardware execution, memory requirements, network delay, and queueing all contribute to the time and cost observed by the application.
+
+\subsection{Groq TSP: Software-Scheduled Inference Hardware}
+\subsubsection{Summary of the research item}
+Abts et al.\ \cite{ref:GroqTSP} describe a Tensor Streaming Processor that organizes computation and data movement through a software-controlled schedule. Its architecture places memory and computational units to exploit dataflow locality. The work illustrates how coordinating hardware and compilation can improve the predictability of deep-learning execution.
+
+\subsubsection{Critical analysis}
+Predictable processor execution is useful, but it is only one contributor to the response time of a remote service. Network transfers, request queues, and output length still affect the user's wait. The hardware paper should therefore not be treated as evidence for a universal token-generation rate or a fixed end-to-end latency. Its relevance lies in the architectural approach and the need to measure the complete request path.
+
+\subsubsection{Relationship to the proposed work}
+For AetherFlow, this work motivates keeping gateway overhead visible in performance measurements. Privacy analysis, cache verification, and quality prediction all consume time before generation begins. Their combined overhead should be reported separately from backend latency, including under load. A faster backend makes this accounting more useful, but does not by itself prove that a particular gateway latency target is achievable.
+
+\subsection{DeepSeek-V3: Multi-Head Latent Attention and Mixture of Experts}
+\subsubsection{Summary of the research item}
+The DeepSeek-V3 report \cite{ref:DeepSeekV3} describes a model with 671 billion total parameters and approximately 37 billion activated per token. It uses Multi-head Latent Attention and the DeepSeekMoE architecture, alongside an auxiliary-loss-free load-balancing strategy. These choices address different efficiency concerns: attention-state storage and the amount of expert computation performed for each token.
+
+\subsubsection{Critical analysis}
+The distinction between total and active parameters matters for deployment. Sparse activation reduces computation, but does not make the full model equivalent to a dense 37-billion-parameter model in storage requirements. Likewise, architectural efficiency does not establish a provider's price or the model's quality on every coding task. Those properties need to be evaluated for the actual service configuration and workload.
+
+\subsubsection{Relationship to the proposed work}
+DeepSeek-V3 illustrates why AetherFlow should support backends with different resource and performance profiles. It is a relevant architectural example, rather than an already established optimal destination for the project. Any decision to add such a backend should follow measurements of response quality, cost, latency, and deployment feasibility, with the same privacy restrictions applied to other providers.
+
+\section{Literature Review Summary Table}
+
+Table~\ref{tab:lit_summary} compares the contributions reviewed above. The final column identifies the question each contribution leaves for AetherFlow's design or evaluation. These are project-specific considerations, rather than claims that the original work should solve every gateway requirement.
+
+\begingroup
+\small
+\setlength{\tabcolsep}{4pt}
+\renewcommand{\arraystretch}{1.12}
+\begin{longtable}{|>{\raggedright\arraybackslash}p{2.5cm}|>{\raggedright\arraybackslash}p{3.5cm}|>{\raggedright\arraybackslash}p{3.9cm}|>{\raggedright\arraybackslash}p{4.7cm}|}
+\caption{Comparison of the Ten Reviewed Contributions}\label{tab:lit_summary}\\
+\hline
+\textbf{Work} & \textbf{Main contribution} & \textbf{Value for AetherFlow} & \textbf{Question for the project} \\ \hline
+\endfirsthead
+\hline
+\textbf{Work} & \textbf{Main contribution} & \textbf{Value for AetherFlow} & \textbf{Question for the project} \\ \hline
+\endhead
+RouteLLM \cite{ref:RouteLLM} & Selection learned from preferences & Supports routing before generation & Does selecting among more backends improve the result? \\ \hline
+FrugalGPT \cite{ref:FrugalGPT} & Response-based model cascades & Provides a cost-saving comparison & How do escalation frequency and delay compare with early selection? \\ \hline
+Self-REF \cite{ref:SelfREF} & Trained confidence tokens & Connects answer reliability to routing & Is prompt-only prediction accurate enough to avoid trial generation? \\ \hline
+Confident or Seek Stronger \cite{ref:ConfidentOrSeekStronger} & Uncertainty routing and calibration & Informs local-to-remote selection & How well does calibration transfer to deployment requests? \\ \hline
+LLMRouter\-Bench \cite{ref:LLMRouterBench} & Common routing evaluation framework & Encourages comparisons with simple baselines & Do gains persist under real service load? \\ \hline
+DeBERTaV3 \cite{ref:DeBERTaV3} & Improved encoder pre-training & Offers a basis for quality prediction & What accuracy and overhead does the trained predictor achieve? \\ \hline
+Sentence-BERT \cite{ref:SBERT} & Reusable sentence embeddings & Supports cache candidate retrieval & Does verification reject unsuitable answers without losing useful hits? \\ \hline
+Presidio \cite{ref:Presidio} & Configurable sensitive-data processing & Supplies detection and transformation tools & Are recognizers and token handling sufficient for the intended inputs? \\ \hline
+Groq TSP \cite{ref:GroqTSP} & Software-scheduled processing & Highlights the role of serving infrastructure & How much delay does the gateway add to the complete request? \\ \hline
+DeepSeek-V3 \cite{ref:DeepSeekV3} & Sparse expert computation and MLA & Illustrates diverse backend resource profiles & Is a candidate deployment suitable for the actual workload? \\ \hline
+\end{longtable}
+\endgroup
+
+\section{Conclusion}
+
+The reviewed contributions support several choices in AetherFlow's design, while also showing why those choices need testing. Early routing avoids generating an answer solely to decide where a request belongs, but it depends on a reliable predictor. A cascade has access to an actual response, at the possible cost of additional execution. Semantic retrieval can reduce repeated work, provided the gateway checks whether a stored answer still fits the request. Sensitive-data detection helps enforce privacy policy, but its coverage and the handling of detected values must be evaluated separately.
+
+The integration problem for AetherFlow is to make these decisions work together. A backend with an attractive quality estimate may be prohibited by policy. A plausible cache match may fail verification. A more accurate predictor may add enough delay to reduce its practical value. The proposed gateway addresses these interactions by applying privacy restrictions, checking reusable answers, and selecting among eligible backends using quality, cost, and latency estimates.
+
+This review supports investigating that combined workflow; it does not establish that the project is the first system to combine such features or that its targets have already been met. The next stages must show how the components are implemented and how their individual and combined effects are measured. Comparisons with fixed-model choices, simple routers, and cache configurations will be needed to demonstrate where AetherFlow offers an improvement and where trade-offs remain.
+\clearpage

@@ -1,0 +1,1036 @@
+%PDF-1.3
+%‚„œ”
+1 0 obj
+<<
+/Producer (pypdf)
+>>
+endobj
+2 0 obj
+<<
+/Type /Pages
+/Count 1
+/Kids [ 4 0 R ]
+>>
+endobj
+3 0 obj
+<<
+/Type /Catalog
+/Pages 2 0 R
+>>
+endobj
+4 0 obj
+<<
+/Type /Page
+/Resources <<
+/Font <<
+/F1 5 0 R
+/F1-0 9 0 R
+/F2 6 0 R
+>>
+/ProcSet [ /ImageB /ImageC /ImageI /PDF /Text ]
+>>
+/MediaBox [ 0.0 0.0 1190 753 ]
+/Parent 2 0 R
+/Contents 8 0 R
+>>
+endobj
+5 0 obj
+<<
+/BaseFont /Helvetica
+/Encoding /WinAnsiEncoding
+/Name /F1
+/Subtype /Type1
+/Type /Font
+>>
+endobj
+6 0 obj
+<<
+/BaseFont /Helvetica-Bold
+/Encoding /WinAnsiEncoding
+/Name /F2
+/Subtype /Type1
+/Type /Font
+>>
+endobj
+7 0 obj
+null
+endobj
+8 0 obj
+[ 10 0 R 11 0 R ]
+endobj
+9 0 obj
+<<
+/BaseFont /Helvetica
+/Encoding /WinAnsiEncoding
+/Name /F1
+/Subtype /Type1
+/Type /Font
+>>
+endobj
+10 0 obj
+<<
+/Length 7362
+>>
+stream
+q
+q
+1 0.0 0.0 1 0.0 0.0 cm
+0.0 0.0 1190 708 re
+W
+n
+1 0 0 1 0 0 cm
+BT
+/F1 12 Tf
+14.4 TL
+ET
+0 0 0 RG
+0 0 0 rg
+1 w
+1 1 1 rg
+n
+3 1210 154 65 re
+B*
+0 0 0 rg
+BT
+/F2 12.5 Tf
+15 TL
+ET
+BT
+1 0 0 1 62.6375 1249 Tm
+(Client) Tj
+T*
+ET
+[ 4 4 ] 0 d
+n
+80 1208 m
+80 48 l
+S
+[ ] 0 d
+1 1 1 rg
+n
+163 1210 154 65 re
+B*
+0 0 0 rg
+BT
+/F2 12.5 Tf
+15 TL
+ET
+BT
+1 0 0 1 196.925 1249 Tm
+(GatewayProxy) Tj
+T*
+ET
+[ 4 4 ] 0 d
+n
+240 1208 m
+240 48 l
+S
+[ ] 0 d
+1 1 1 rg
+n
+323 1210 154 65 re
+B*
+0 0 0 rg
+BT
+/F2 12.5 Tf
+15 TL
+ET
+BT
+1 0 0 1 351.7125 1249 Tm
+(PrivacyAnalyzer) Tj
+T*
+ET
+0 0 0 rg
+BT
+/F1 12 Tf
+14.4 TL
+ET
+BT
+1 0 0 1 355.312 1228 Tm
+(uses TokenVault) Tj
+T*
+ET
+[ 4 4 ] 0 d
+n
+400 1208 m
+400 48 l
+S
+[ ] 0 d
+1 1 1 rg
+n
+483 1210 154 65 re
+B*
+0 0 0 rg
+BT
+/F2 12.5 Tf
+15 TL
+ET
+BT
+1 0 0 1 513.4562 1249 Tm
+(SemanticCache) Tj
+T*
+ET
+[ 4 4 ] 0 d
+n
+560 1208 m
+560 48 l
+S
+[ ] 0 d
+1 1 1 rg
+n
+643 1210 154 65 re
+B*
+0 0 0 rg
+BT
+/F2 12.5 Tf
+15 TL
+ET
+BT
+1 0 0 1 669.9875 1249 Tm
+(QualityEstimator) Tj
+T*
+ET
+[ 4 4 ] 0 d
+n
+720 1208 m
+720 48 l
+S
+[ ] 0 d
+1 1 1 rg
+n
+823 1210 154 65 re
+B*
+0 0 0 rg
+BT
+/F2 12.5 Tf
+15 TL
+ET
+BT
+1 0 0 1 830.8813 1249 Tm
+(ExecutionPolicyEngine) Tj
+T*
+ET
+0 0 0 rg
+BT
+/F1 12 Tf
+14.4 TL
+ET
+BT
+1 0 0 1 849.642 1228 Tm
+(uses UsageLedger) Tj
+T*
+ET
+[ 4 4 ] 0 d
+n
+900 1208 m
+900 48 l
+S
+[ ] 0 d
+1 1 1 rg
+n
+1003 1210 154 65 re
+B*
+0 0 0 rg
+BT
+/F2 12.5 Tf
+15 TL
+ET
+BT
+1 0 0 1 1038.331 1249 Tm
+(ModelAdapter) Tj
+T*
+ET
+0 0 0 rg
+BT
+/F1 12 Tf
+14.4 TL
+ET
+BT
+1 0 0 1 1044.984 1228 Tm
+(Local \057 Cloud) Tj
+T*
+ET
+[ 4 4 ] 0 d
+n
+1080 1208 m
+1080 48 l
+S
+[ ] 0 d
+[ ] 0 d
+n
+80 1164 m
+240 1164 l
+S
+[ ] 0 d
+n
+240 1164 m
+232 1168 l
+S
+n
+240 1164 m
+232 1160 l
+S
+BT
+/F1 15 Tf
+18 TL
+ET
+1 1 1 rg
+n
+103.05 1170 113.9 19 re
+f*
+0 0 0 rg
+BT
+/F1 15 Tf
+18 TL
+ET
+BT
+1 0 0 1 107.05 1174 Tm
+(1\056 Send request) Tj
+T*
+ET
+[ ] 0 d
+n
+240 1110 m
+400 1110 l
+S
+[ ] 0 d
+n
+400 1110 m
+392 1114 l
+S
+n
+400 1110 m
+392 1106 l
+S
+BT
+/F1 15 Tf
+18 TL
+ET
+1 1 1 rg
+n
+260.5675 1116 118.865 19 re
+f*
+0 0 0 rg
+BT
+/F1 15 Tf
+18 TL
+ET
+BT
+1 0 0 1 264.5675 1120 Tm
+(2\056 Check privacy) Tj
+T*
+ET
+n
+400 1060 m
+448 1060 l
+S
+n
+448 1060 m
+448 1034 l
+S
+n
+448 1034 m
+400 1034 l
+S
+n
+400 1034 m
+408 1038 l
+S
+n
+400 1034 m
+408 1030 l
+S
+1 1 1 rg
+n
+455 1033 215 39 re
+f*
+BT
+/F1 13 Tf
+15.6 TL
+ET
+0 0 0 rg
+BT
+1 0 0 1 458 1057 Tm
+(Mask values when allowed) Tj
+T*
+ET
+BT
+1 0 0 1 458 1040 Tm
+(Store mapping in TokenVault) Tj
+T*
+ET
+[ 5 3 ] 0 d
+n
+400 990 m
+240 990 l
+S
+[ ] 0 d
+n
+240 990 m
+248 994 l
+S
+n
+240 990 m
+248 986 l
+S
+BT
+/F1 15 Tf
+18 TL
+ET
+1 1 1 rg
+n
+192.1975 996 255.605 19 re
+f*
+0 0 0 rg
+BT
+/F1 15 Tf
+18 TL
+ET
+BT
+1 0 0 1 196.1975 1000 Tm
+(3\056 Checked request and privacy rules) Tj
+T*
+ET
+0.8 w
+n
+12 820 1165 135 re
+S
+1 1 1 rg
+n
+13 929 440 25 re
+f*
+0 0 0 rg
+BT
+/F2 14 Tf
+16.8 TL
+ET
+BT
+1 0 0 1 23 937 Tm
+(opt\072 caching is allowed for this request) Tj
+T*
+ET
+[ ] 0 d
+n
+240 902 m
+560 902 l
+S
+[ ] 0 d
+n
+560 902 m
+552 906 l
+S
+n
+560 902 m
+552 898 l
+S
+BT
+/F1 15 Tf
+18 TL
+ET
+1 1 1 rg
+n
+283.035 908 233.93 19 re
+f*
+0 0 0 rg
+BT
+/F1 15 Tf
+18 TL
+ET
+BT
+1 0 0 1 287.035 912 Tm
+(4\056 Find and verify a stored answer) Tj
+T*
+ET
+[ 5 3 ] 0 d
+n
+560 850 m
+240 850 l
+S
+[ ] 0 d
+n
+240 850 m
+248 854 l
+S
+n
+240 850 m
+248 846 l
+S
+BT
+/F1 15 Tf
+18 TL
+ET
+1 1 1 rg
+n
+262.6125 856 274.775 19 re
+f*
+0 0 0 rg
+BT
+/F1 15 Tf
+18 TL
+ET
+BT
+1 0 0 1 266.6125 860 Tm
+(5\056 Verified answer or no suitable answer) Tj
+T*
+ET
+0.8 w
+n
+12 75 1165 725 re
+S
+1 1 1 rg
+n
+13 774 440 25 re
+f*
+0 0 0 rg
+BT
+/F2 14 Tf
+16.8 TL
+ET
+BT
+1 0 0 1 23 782 Tm
+(alt\072 a verified cached answer is available) Tj
+T*
+ET
+[ 5 3 ] 0 d
+n
+240 747 m
+80 747 l
+S
+[ ] 0 d
+n
+80 747 m
+88 751 l
+S
+n
+80 747 m
+88 743 l
+S
+BT
+/F1 15 Tf
+18 TL
+ET
+1 1 1 rg
+n
+72.63 753 174.74 19 re
+f*
+0 0 0 rg
+BT
+/F1 15 Tf
+18 TL
+ET
+BT
+1 0 0 1 76.63 757 Tm
+(6\056 Return cached answer) Tj
+T*
+ET
+[ 5 3 ] 0 d
+n
+12 708 m
+1177 708 l
+S
+[ ] 0 d
+1 1 1 rg
+n
+15 679 380 25 re
+f*
+BT
+/F2 14 Tf
+16.8 TL
+ET
+0 0 0 rg
+BT
+1 0 0 1 23 687 Tm
+(else\072 a new answer is needed) Tj
+T*
+ET
+[ ] 0 d
+n
+240 644 m
+720 644 l
+S
+[ ] 0 d
+n
+720 644 m
+712 648 l
+S
+n
+720 644 m
+712 640 l
+S
+BT
+/F1 15 Tf
+18 TL
+ET
+1 1 1 rg
+n
+348.0275 650 263.945 19 re
+f*
+0 0 0 rg
+BT
+/F1 15 Tf
+18 TL
+ET
+BT
+1 0 0 1 352.0275 654 Tm
+(7\056 Predict quality for supported models) Tj
+T*
+ET
+[ 5 3 ] 0 d
+n
+720 599 m
+240 599 l
+S
+[ ] 0 d
+n
+240 599 m
+248 603 l
+S
+n
+240 599 m
+248 595 l
+S
+BT
+/F1 15 Tf
+18 TL
+ET
+1 1 1 rg
+n
+420.1475 605 119.705 19 re
+f*
+0 0 0 rg
+BT
+/F1 15 Tf
+18 TL
+ET
+BT
+1 0 0 1 424.1475 609 Tm
+(8\056 Quality scores) Tj
+T*
+ET
+[ ] 0 d
+n
+240 554 m
+900 554 l
+S
+[ ] 0 d
+n
+900 554 m
+892 558 l
+S
+n
+900 554 m
+892 550 l
+S
+BT
+/F1 15 Tf
+18 TL
+ET
+1 1 1 rg
+n
+476.375 560 187.25 19 re
+f*
+0 0 0 rg
+BT
+/F1 15 Tf
+18 TL
+ET
+BT
+1 0 0 1 480.375 564 Tm
+(9\056 Select an allowed model) Tj
+T*
+ET
+n
+900 510 m
+948 510 l
+S
+n
+948 510 m
+948 484 l
+S
+n
+948 484 m
+900 484 l
+S
+n
+900 484 m
+908 488 l
+S
+n
+900 484 m
+908 480 l
+S
+1 1 1 rg
+n
+955 483 215 39 re
+f*
+BT
+/F1 13 Tf
+15.6 TL
+ET
+0 0 0 rg
+BT
+1 0 0 1 958 507 Tm
+(Check and reserve budget) Tj
+T*
+ET
+BT
+1 0 0 1 958 490 Tm
+(using UsageLedger) Tj
+T*
+ET
+[ 5 3 ] 0 d
+n
+900 445 m
+240 445 l
+S
+[ ] 0 d
+n
+240 445 m
+248 449 l
+S
+n
+240 445 m
+248 441 l
+S
+BT
+/F1 15 Tf
+18 TL
+ET
+1 1 1 rg
+n
+427.175 451 285.65 19 re
+f*
+0 0 0 rg
+BT
+/F1 15 Tf
+18 TL
+ET
+BT
+1 0 0 1 431.175 455 Tm
+(10\056 Selected model and confirmed budget) Tj
+T*
+ET
+[ ] 0 d
+n
+240 401 m
+1080 401 l
+S
+[ ] 0 d
+n
+1080 401 m
+1072 405 l
+S
+n
+1080 401 m
+1072 397 l
+S
+BT
+/F1 15 Tf
+18 TL
+ET
+1 1 1 rg
+n
+538.0175 407 243.965 19 re
+f*
+0 0 0 rg
+BT
+/F1 15 Tf
+18 TL
+ET
+BT
+1 0 0 1 542.0175 411 Tm
+(11\056 Send request to selected model) Tj
+T*
+ET
+n
+1080 365 m
+1128 365 l
+S
+n
+1128 365 m
+1128 339 l
+S
+n
+1128 339 m
+1080 339 l
+S
+n
+1080 339 m
+1088 343 l
+S
+n
+1080 339 m
+1088 335 l
+S
+1 1 1 rg
+n
+857 338 215 39 re
+f*
+BT
+/F1 13 Tf
+15.6 TL
+ET
+0 0 0 rg
+BT
+1 0 0 1 860 362 Tm
+(Local or cloud model call) Tj
+T*
+ET
+[ 5 3 ] 0 d
+n
+1080 303 m
+240 303 l
+S
+[ ] 0 d
+n
+240 303 m
+248 307 l
+S
+n
+240 303 m
+248 299 l
+S
+BT
+/F1 15 Tf
+18 TL
+ET
+1 1 1 rg
+n
+530.93 309 258.14 19 re
+f*
+0 0 0 rg
+BT
+/F1 15 Tf
+18 TL
+ET
+BT
+1 0 0 1 534.93 313 Tm
+(12\056 Model response and actual usage) Tj
+T*
+ET
+[ ] 0 d
+n
+240 263 m
+400 263 l
+S
+[ ] 0 d
+n
+400 263 m
+392 267 l
+S
+n
+400 263 m
+392 259 l
+S
+BT
+/F1 15 Tf
+18 TL
+ET
+1 1 1 rg
+n
+192.19 269 255.62 19 re
+f*
+0 0 0 rg
+BT
+/F1 15 Tf
+18 TL
+ET
+BT
+1 0 0 1 196.19 273 Tm
+(13\056 Restore masked values if needed) Tj
+T*
+ET
+[ 5 3 ] 0 d
+n
+400 223 m
+240 223 l
+S
+[ ] 0 d
+n
+240 223 m
+248 227 l
+S
+n
+240 223 m
+248 219 l
+S
+BT
+/F1 15 Tf
+18 TL
+ET
+1 1 1 rg
+n
+248.8825 229 142.235 19 re
+f*
+0 0 0 rg
+BT
+/F1 15 Tf
+18 TL
+ET
+BT
+1 0 0 1 252.8825 233 Tm
+(14\056 Response ready) Tj
+T*
+ET
+[ ] 0 d
+n
+240 185 m
+900 185 l
+S
+[ ] 0 d
+n
+900 185 m
+892 189 l
+S
+n
+900 185 m
+892 181 l
+S
+BT
+/F1 15 Tf
+18 TL
+ET
+1 1 1 rg
+n
+413.825 191 312.35 19 re
+f*
+0 0 0 rg
+BT
+/F1 15 Tf
+18 TL
+ET
+BT
+1 0 0 1 417.825 195 Tm
+(15\056 Record usage and release unused budget) Tj
+T*
+ET
+[ ] 0 d
+n
+240 145 m
+400 145 l
+S
+[ ] 0 d
+n
+400 145 m
+392 149 l
+S
+n
+400 145 m
+392 141 l
+S
+BT
+/F1 15 Tf
+18 TL
+ET
+1 1 1 rg
+n
+215.1325 151 209.735 19 re
+f*
+0 0 0 rg
+BT
+/F1 15 Tf
+18 TL
+ET
+BT
+1 0 0 1 219.1325 155 Tm
+(16\056 Clear temporary mappings) Tj
+T*
+ET
+[ 5 3 ] 0 d
+n
+240 102 m
+80 102 l
+S
+[ ] 0 d
+n
+80 102 m
+88 106 l
+S
+n
+80 102 m
+88 98 l
+S
+BT
+/F1 15 Tf
+18 TL
+ET
+1 1 1 rg
+n
+78.885 108 162.23 19 re
+f*
+0 0 0 rg
+BT
+/F1 15 Tf
+18 TL
+ET
+BT
+1 0 0 1 82.885 112 Tm
+(17\056 Return final answer) Tj
+T*
+ET
+0 0 0 rg
+BT
+/F1 14 Tf
+16.8 TL
+ET
+BT
+1 0 0 1 354.956 30 Tm
+(Cloud calls use the BYOK key or package key\056 Restricted requests stay local\056) Tj
+T*
+ET
+Q
+
+Q
+
+endstream
+endobj
+11 0 obj
+<<
+/Length 257
+>>
+stream
+q
+0.0 0.0 1190 753 re
+W
+n
+1 0 0 1 0 0 cm
+BT
+/F1-0 12 Tf
+14.4 TL
+ET
+BT
+/F1-0 14 Tf
+16.8 TL
+ET
+BT
+1 0 0 1 302.806 728 Tm
+(Same lifelines\054 left to right\072 Client \174 Gateway \174 Privacy \174 Cache \174 Quality \174 Policy \174 Model adapter) Tj
+T*
+ET
+Q
+
+endstream
+endobj
+xref
+0 12
+0000000000 65535 f 
+0000000015 00000 n 
+0000000054 00000 n 
+0000000113 00000 n 
+0000000162 00000 n 
+0000000365 00000 n 
+0000000472 00000 n 
+0000000584 00000 n 
+0000000604 00000 n 
+0000000637 00000 n 
+0000000744 00000 n 
+0000008159 00000 n 
+trailer
+<<
+/Size 12
+/Root 3 0 R
+/Info 1 0 R
+>>
+startxref
+8468
+%%EOF
