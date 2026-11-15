@@ -576,34 +576,34 @@ only after they have been developed and tested.
 \section{Functional Requirements}
 \label{sec:functional-reqs}
 \subsection{Functional Requirements for Developer Client}
-\begin{itemize}
-\item \textbf{FR-01 (Context selection):}
+\begin{enumerate}
+\item FR-01 (Context selection)
 The client shall allow the developer to choose the code or conversation context
 to include in a request. Before submission, the client shall show which content
 will be sent. The client shall not upload the complete repository unless the
 developer explicitly selects that content.
-\item \textbf{FR-02 (Authenticated dispatch):}
+\item FR-02 (Authenticated dispatch)
 The planned client shall send a validated chat-completion request to the
 gateway over an authenticated encrypted connection. The inspected prototype
 currently uses a JSON request to the \texttt{/chat} endpoint. Integration with
 the planned \texttt{/v1/chat/completions} interface remains part of the future
 implementation.
-\item \textbf{FR-03 (Response delivery and cancellation):}
+\item FR-03 (Response delivery and cancellation)
 The client shall distinguish between completed, partial, cancelled, and failed
 responses. If streaming is enabled, it shall preserve the order of the
 supported server-sent events. Responses involving reversible masking shall be
 buffered until the gateway completes the authorization and restoration checks.
-\item \textbf{FR-04 (Result provenance):}
+\item FR-04 (Result provenance)
 The client shall indicate whether a response came from the semantic cache, a
 local model, or an external provider. It shall also indicate when a displayed
 value is simulated or unavailable. Cost and latency values shall be based on
 recorded measurements or documented reference values; mock values shall not be
 presented as experimental results.
-\end{itemize}
+\end{enumerate}
 
 \subsection{Functional Requirements for Enterprise Administrator}
-\begin{itemize}
-\item \textbf{FR-05 (Policy versioning):}
+\begin{enumerate}
+\item FR-05 (Policy versioning)
 An authorized administrator shall be able to publish a new immutable policy
 version. The policy shall contain the quality, cost, and latency weights, usage
 limits, privacy rules, and reference bounds required by the router. The weights
@@ -611,106 +611,106 @@ shall be non-negative and shall add up to one. New requests shall use the
 latest valid version, while an in-flight request shall continue using the
 version captured when it was admitted. An emergency revocation may prevent
 further dispatches.
-\item \textbf{FR-06 (Model registry):}
+\item FR-06 (Model registry)
 The administrator shall be able to register an approved model endpoint with
 its deployment type, protected credential reference, pricing information,
 token limits, and estimate-freshness information. A model revision shall not
 be used by learned routing until the predictor has coverage for that revision.
-\item \textbf{FR-07 (Budget controls):}
+\item FR-07 (Budget controls)
 The gateway shall enforce the configured daily token limits and daily or
 monthly spending limits for clients and departments. Before dispatch, the
 admission step shall reserve a conservative upper bound for the expected
 usage and charge. If the provider price or expected usage cannot be bounded
 reliably, the candidate shall be excluded rather than treated as free.
-\item \textbf{FR-08 (Audit access):}
+\item FR-08 (Audit access)
 Authorized personnel shall be able to view metadata events for their tenant.
 Audit exports shall exclude raw prompts, detected sensitive values,
 credentials, vault plaintext, and restored response text. Configuration
 changes shall record the responsible actor and the policy or model version
 that was changed.
-\end{itemize}
+\end{enumerate}
 
 \subsection{Functional Requirements for Gateway Core and Router}
-\begin{itemize}
-\item \textbf{FR-09 (Complete screening):}
+\begin{enumerate}
+\item FR-09 (Complete screening)
 The Privacy Analyzer shall inspect the user message, selected conversation
 history, system context, and supported attachments before model dispatch.
 Unsupported encodings, oversized requests, and analyzer failures shall stop
 the request before any model call is made.
-\item \textbf{FR-10 (Hard eligibility):}
+\item FR-10 (Hard eligibility)
 Credentials and content classified as confidential by an administrator shall
 remain local-only. An explicit confidential label shall take priority over a
 permissive recognizer result. Masking shall not be used to change a local-only
 classification into an externally eligible request.
-\item \textbf{FR-11 (Approved masking):}
+\item FR-11 (Approved masking)
 Entity types approved by the policy may be replaced with opaque,
 request-scoped placeholders. The masking step shall resolve overlapping spans
 deterministically and shall validate the complete modified payload before
 dispatch. If the policy does not allow the selected external destination, the
 request shall remain local or be rejected.
-\item \textbf{FR-12 (Encrypted mapping):}
+\item FR-12 (Encrypted mapping)
 If masking is used, the vault shall protect the mapping between each
 placeholder and its original value using AES-256-GCM. The encrypted mapping
 shall use a unique nonce, an authentication tag, and authenticated metadata
 binding it to the relevant tenant, client, request, policy version, and
 expiry. The vault shall reject altered or mismatched mappings.
-\item \textbf{FR-13 (Controlled restoration):}
+\item FR-13 (Controlled restoration)
 Restoration shall be allowed only for the originating authenticated client and
 the corresponding tenant, request, and unexpired mapping. An unknown or
 modified placeholder shall cause controlled failure. Mappings shall be deleted
 after successful completion, cancellation, timeout, or expiry. If the vault
 check fails, masked execution or response delivery shall not continue.
-\item \textbf{FR-14 (Cloud dispatch boundary):}
+\item FR-14 (Cloud dispatch boundary)
 Each cloud adapter shall receive an eligibility decision that is bound to the
 exact outgoing payload and approved endpoint. Client-supplied flags shall not
 authorize external dispatch. A maskable request shall require both an approved
 masking decision and provider authorization.
-\item \textbf{FR-15 (Two-gate reuse):}
+\item FR-15 (Two-gate reuse)
 Semantic cache lookup shall be available only for eligible plain requests.
 Before returning a candidate, the gateway shall apply both similarity gates
 and recheck the authenticated client, tenant, policy version, context,
 source-model version, readiness, ownership, and expiry. If any check fails,
 the request shall be treated as a cache miss.
-\item \textbf{FR-16 (Safe cache writes):}
+\item FR-16 (Safe cache writes)
 Only successful responses to approved plain requests shall be stored as
 reusable cache entries. Partial responses, masked requests, restricted
 requests, and failed requests shall not create reusable entries. Pending
 cross-store writes shall be recoverable through an idempotent reconciliation
 process.
-\item \textbf{FR-17 (Quality prediction):}
+\item FR-17 (Quality prediction)
 The predictor shall return finite scores for the model revisions it supports.
 Missing predictions, unsupported input lengths, or incompatible model
 revisions shall remove the affected candidate from selection. If no valid
 candidate remains, the gateway shall return a controlled error.
-\item \textbf{FR-18 (Utility selection):}
+\item FR-18 (Utility selection)
 The router shall first remove candidates that fail privacy, health, context,
 capacity, or budget constraints. It shall then select the remaining candidate
 using the utility function defined in Chapter~\ref{ch:methodology}. Ties shall
 be resolved first by estimated API cost and then by model identifier.
-\item \textbf{FR-19 (Atomic admission):}
+\item FR-19 (Atomic admission)
 The gateway shall not dispatch a request until a transaction has confirmed and
 reserved the required bounded token and spending amounts. Reconciliation shall
 record every attempted call and retain reservations whose final usage has not
 yet been confirmed.
-\item \textbf{FR-20 (Failure recovery):}
+\item FR-20 (Failure recovery)
 The gateway may make at most one recovery attempt before response content is
 delivered to the client. Before each attempt, it shall recheck privacy
 eligibility, endpoint revocation, provider health, and budget availability. If
 no candidate satisfies these conditions, the gateway shall return a controlled
 error.
-\item \textbf{FR-21 (Stream integrity):}
+\item FR-21 (Stream integrity)
 If an upstream provider fails after content has started streaming, the gateway
 shall send an explicit terminal error for that stream. It shall not append a
 second model's response to the partial response. Provider consumption shall be
 cancelled and temporary state shall be cleaned up when the client cancels.
-\item \textbf{FR-22 (Telemetry):}
+\item FR-22 (Telemetry)
 For each accepted request, the system shall record the policy version, model
 version, stage timings, execution source, usage information, and final
 outcome. Telemetry shall exclude raw prompts, credentials, temporary mappings,
 and restored sensitive values. Append-only application permissions are not by
 themselves proof of cryptographic tamper resistance; any such protection shall
 be treated as a separate proposed control.
-\end{itemize}
+\end{enumerate}
 
 \section{Quality Attributes}
 \label{sec:quality-attributes}
@@ -763,48 +763,48 @@ NFR-08 & A valid policy change shall apply to new requests within 5 seconds, and
 \label{sec:assumptions}
 These assumptions make the proposed design definite. Each one needs to be confirmed prior to deployment; when the system does not hold, its consequence determines what it will do.
 \begin{enumerate}
-\item \textbf{A-01: Protected local boundary.} The local inference, helper models, vault, and gateway running within an authenticated service access in an organization controlled network. This keeps screening and embedding local, even if it is an open-weight model.
-\item \textbf{A-02: Administrative confidentiality policy.} ``Restricted'' is decided by an authorized administrator: Projects, Data Labels, Maskable Entity Classes and Approved Providers. Automated PII recognition cannot infer all business confidentiality, and external dispatch is denied if there is no applicable policy in place.
-\item \textbf{A-03: Local key management.} A local secret manager with some protection can provide a per-request cryptographic material or wrap request keys for an isolated vault process. Plaintext keys are not saved in PostgreSQL, Qdrant, source code or routine logs. The specific secret-manager product is unknown. If a user does not decide to use a service, or it is not available, then the request is rejected in a closed manner.
-\item \textbf{A-04: Nonce and request binding.} A new 256-bit data key is proposed for each mapping, and a single encryption with that key and a 96-bit nonce. If there is a re-encryption, it is with a different key. A 128-bit authentication tag and tenant, client, request, policy, and expiry information must be present. This makes nonce uniqueness easy and helps avoid cross request record substitution.
-\item \textbf{A-05: Volatile mapping lifetime.} Encrypted mappings are stored locally in a process-owned store, with lifetime of at most 5 minutes, also bounded by the request deadline. If they are completed normally, they will be removed sooner. If an in-flight masked request is made, it may be terminated on a restart, but mappings are not necessarily persisted in baseline.
-\item \textbf{A-06: Local inference capacity.}
+\item A-01 Protected local boundary. The local inference, helper models, vault, and gateway running within an authenticated service access in an organization controlled network. This keeps screening and embedding local, even if it is an open-weight model.
+\item A-02 Administrative confidentiality policy. ``Restricted'' is decided by an authorized administrator: Projects, Data Labels, Maskable Entity Classes and Approved Providers. Automated PII recognition cannot infer all business confidentiality, and external dispatch is denied if there is no applicable policy in place.
+\item A-03 Local key management. A local secret manager with some protection can provide a per-request cryptographic material or wrap request keys for an isolated vault process. Plaintext keys are not saved in PostgreSQL, Qdrant, source code or routine logs. The specific secret-manager product is unknown. If a user does not decide to use a service, or it is not available, then the request is rejected in a closed manner.
+\item A-04 Nonce and request binding. A new 256-bit data key is proposed for each mapping, and a single encryption with that key and a 96-bit nonce. If there is a re-encryption, it is with a different key. A 128-bit authentication tag and tenant, client, request, policy, and expiry information must be present. This makes nonce uniqueness easy and helps avoid cross request record substitution.
+\item A-05 Volatile mapping lifetime. Encrypted mappings are stored locally in a process-owned store, with lifetime of at most 5 minutes, also bounded by the request deadline. If they are completed normally, they will be removed sooner. If an in-flight masked request is made, it may be terminated on a restart, but mappings are not necessarily persisted in baseline.
+\item A-06 Local inference capacity.
 The design assumes that at least one approved local model can run on the
 evaluation machine. That model may still be busy or unavailable when a request
 arrives. We will establish the GPU and queue limits through profiling rather
 than estimating them from the model's parameter count. If no local capacity is
 available for a restricted request, the gateway will return a controlled error
 and will not use a cloud fallback.
-\item \textbf{A-07: Supported cloud contracts.}
+\item A-07 Supported cloud contracts.
 The proposed deployment may use configured GPT and Gemini endpoints supplied
 with organization-approved credentials. Their context limits, billable usage,
 output limits, and prices must be known before admission. A model whose charge
 cannot be bounded reliably will be excluded when a strict spending limit is
 enabled.
-\item \textbf{A-08: Estimate freshness.}
+\item A-08 Estimate freshness.
 The router depends on model-specific quality coverage, conservative latency
 defaults, and versioned prices. In the initial design, latency information older
 than five minutes will either use a documented conservative default or cause
 the candidate to be excluded. These freshness rules are proposed settings and
 will require validation with the intended workload.
-\item \textbf{A-09: Training evidence.}
+\item A-09 Training evidence.
 The quality predictor assumes that labelled responses can be collected lawfully
 for the intended task distribution. The predictor has not yet been trained and
 validated. A model revision without matching evaluation data will remain
 unsupported; its predictor cannot silently inherit results from another
 revision.
-\item \textbf{A-10: Conservative cache scope.}
+\item A-10 Conservative cache scope.
 Initial cache reuse will be limited to the same authenticated client and
 immutable policy version. The complete context and generation settings must
 also match the stored fingerprints. Only plain requests will be eligible for
 lookup and storage; masked and restricted requests will bypass the cache.
-\item \textbf{A-11: Bounded recovery.}
+\item A-11 Bounded recovery.
 The initial design allows at most one recovery attempt before content is
 delivered to the client, within a shared 120-second request deadline. The
 proposed connection, first-token, and inter-event idle timeouts are 5, 30, and
 15 seconds respectively. Masked outputs will initially be buffered. These are
 configuration defaults, not measured performance limits.
-\item \textbf{A-12: Retention and clocks.}
+\item A-12 Retention and clocks.
 The design assumes that the participating services use synchronized UTC
 clocks. The initial operational proposal is to expire approved cache text
 after 24 hours and retain related metadata for 30 days, subject to
