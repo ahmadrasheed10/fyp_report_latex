@@ -1,0 +1,73 @@
+{
+  "recorded_at_utc": "2026-11-17T12:08:39.899280+00:00",
+  "server_build_identifier": "Not exposed; cannot establish build reproducibility",
+  "scope": "Documented API and selection checks only; not generated-answer quality or end-to-end privacy",
+  "raw_evidence_sha256": "cb509ba961572b98097b642aab21d030d9ae5cf537702cfd14486569a20eb7fb",
+  "executed": 6,
+  "passed": 6,
+  "failed": 0,
+  "not_executed": 0,
+  "cases": {
+    "TC-01": {
+      "status": "Passed",
+      "criteria": {
+        "HTTP 200": true,
+        "Nonempty registry": true,
+        "Distinct present identifiers": true
+      }
+    },
+    "TC-02": {
+      "status": "Passed",
+      "criteria": {
+        "Legacy HTTP 200": true,
+        "Legacy registered model": true,
+        "Boolean fallback flag": true,
+        "Decision reasons present": true,
+        "Balanced HTTP 200": true,
+        "Balanced registered model": true,
+        "Balanced mode returned": true
+      }
+    },
+    "TC-03": {
+      "status": "Passed",
+      "criteria": {
+        "empty": true,
+        "missing-query": true,
+        "too-long": true,
+        "threshold-low": true,
+        "threshold-high": true,
+        "quality-low": true,
+        "quality-high": true,
+        "zero-latency": true,
+        "invalid-mode": true
+      }
+    },
+    "TC-04": {
+      "status": "Passed",
+      "criteria": {
+        "Privacy config HTTP 200": true,
+        "Approved set nonempty": true,
+        "Private HTTP 200": true,
+        "Selected model approved": true
+      }
+    },
+    "TC-05": {
+      "status": "Passed",
+      "criteria": {
+        "Sensitive requests enabled": true,
+        "Sensitive routing HTTP 200": true,
+        "Sensitivity preserved": true,
+        "Selected model approved": true
+      }
+    },
+    "TC-06": {
+      "status": "Passed",
+      "criteria": {
+        "Keyword configured": true,
+        "Sensitivity HTTP 200": true,
+        "Sensitive label": true,
+        "Keyword explanation": true
+      }
+    }
+  }
+}

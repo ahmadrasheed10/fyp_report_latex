@@ -1,0 +1,184 @@
+{
+  "recorded_at_utc": "2026-11-16T13:16:02.876554+00:00",
+  "request_count": 16,
+  "http_status_matches": 16,
+  "registry_count": 8,
+  "approved_model_count": 2,
+  "approved_models": [
+    "Llama-3.1-8B-Instruct",
+    "Qwen3-8B"
+  ],
+  "valid_routing_responses": 4,
+  "routing_requests": 4,
+  "validation_rejections_with_details": 9,
+  "invalid_requests": 9,
+  "privacy_eligible_selections": 2,
+  "privacy_requests": 2,
+  "keyword_result": {
+    "sensitivity": "sensitive",
+    "reason": "local keyword rule matched: 'confidential'"
+  },
+  "routes": [
+    {
+      "id": "legacy",
+      "status": 200,
+      "selected_model": "gpt-5",
+      "in_registry": true,
+      "is_fallback": true,
+      "approved_for_sensitive": false
+    },
+    {
+      "id": "balanced",
+      "status": 200,
+      "selected_model": "gpt-4.1",
+      "in_registry": true,
+      "is_fallback": false,
+      "approved_for_sensitive": false
+    },
+    {
+      "id": "private",
+      "status": 200,
+      "selected_model": "Llama-3.1-8B-Instruct",
+      "in_registry": true,
+      "is_fallback": false,
+      "approved_for_sensitive": true
+    },
+    {
+      "id": "sensitive-balanced",
+      "status": 200,
+      "selected_model": "Llama-3.1-8B-Instruct",
+      "in_registry": true,
+      "is_fallback": false,
+      "approved_for_sensitive": true
+    }
+  ],
+  "validation": [
+    {
+      "id": "empty",
+      "status": 422,
+      "structured_error": true,
+      "errors": [
+        {
+          "location": [
+            "body",
+            "query"
+          ],
+          "type": "string_too_short"
+        }
+      ]
+    },
+    {
+      "id": "threshold-high",
+      "status": 422,
+      "structured_error": true,
+      "errors": [
+        {
+          "location": [
+            "body",
+            "threshold"
+          ],
+          "type": "less_than_equal"
+        }
+      ]
+    },
+    {
+      "id": "invalid-mode",
+      "status": 422,
+      "structured_error": true,
+      "errors": [
+        {
+          "location": [
+            "body",
+            "mode"
+          ],
+          "type": "string_pattern_mismatch"
+        }
+      ]
+    },
+    {
+      "id": "threshold-low",
+      "status": 422,
+      "structured_error": true,
+      "errors": [
+        {
+          "location": [
+            "body",
+            "threshold"
+          ],
+          "type": "greater_than_equal"
+        }
+      ]
+    },
+    {
+      "id": "quality-low",
+      "status": 422,
+      "structured_error": true,
+      "errors": [
+        {
+          "location": [
+            "body",
+            "quality_floor"
+          ],
+          "type": "greater_than_equal"
+        }
+      ]
+    },
+    {
+      "id": "quality-high",
+      "status": 422,
+      "structured_error": true,
+      "errors": [
+        {
+          "location": [
+            "body",
+            "quality_floor"
+          ],
+          "type": "less_than_equal"
+        }
+      ]
+    },
+    {
+      "id": "zero-latency",
+      "status": 422,
+      "structured_error": true,
+      "errors": [
+        {
+          "location": [
+            "body",
+            "latency_budget_ms"
+          ],
+          "type": "greater_than"
+        }
+      ]
+    },
+    {
+      "id": "too-long",
+      "status": 422,
+      "structured_error": true,
+      "errors": [
+        {
+          "location": [
+            "body",
+            "query"
+          ],
+          "type": "string_too_long"
+        }
+      ]
+    },
+    {
+      "id": "missing-query",
+      "status": 422,
+      "structured_error": true,
+      "errors": [
+        {
+          "location": [
+            "body",
+            "query"
+          ],
+          "type": "missing"
+        }
+      ]
+    }
+  ],
+  "evidence_sha256": "d85201326b0520e3ac157884795d6a0f345a3eb701035df514b322bf28f2da29"
+}

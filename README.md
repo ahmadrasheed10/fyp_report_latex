@@ -10,6 +10,8 @@ LaTeX source, figures, and compiled PDF for the AetherFlow FYP-I Deliverable III
 - `fypbib.bib`: bibliography database.
 - `Figures/`: diagrams, screenshots, logos, and other report assets.
 - `main.pdf`: compiled report snapshot.
+- `evidence/prototype-observations/`: saved preliminary API observations and reproduction scripts.
+- `evidence/formal-test-run/`: recorded API responses, assessment script, and the current report case-ID mapping in `report_case_results.json`. The report contains five Passed cases and three Not Executed mode cases; original execution records retain their original IDs.
 - `chapters/`: retained earlier chapter source files. The current main document does not import these files; edit `main.tex` and `chapters_7_to_10.tex` for the active report.
 - `.vscode/settings.json`: LaTeX Workshop build configuration.
 

@@ -1,0 +1,76 @@
+{
+  "note": "Report IDs renumbered consecutively after removal of the original input-validation case. Original run files are unchanged.",
+  "executed": 5,
+  "passed": 5,
+  "failed": 0,
+  "not_executed": 3,
+  "cases": {
+    "TC-01": {
+      "status": "Passed",
+      "criteria": {
+        "HTTP 200": true,
+        "Nonempty registry": true,
+        "Distinct present identifiers": true
+      },
+      "original_evidence_id": "TC-01"
+    },
+    "TC-02": {
+      "status": "Passed",
+      "criteria": {
+        "Legacy HTTP 200": true,
+        "Legacy registered model": true,
+        "Boolean fallback flag": true,
+        "Decision reasons present": true,
+        "Balanced HTTP 200": true,
+        "Balanced registered model": true,
+        "Balanced mode returned": true
+      },
+      "original_evidence_id": "TC-02"
+    },
+    "TC-03": {
+      "status": "Passed",
+      "criteria": {
+        "Privacy config HTTP 200": true,
+        "Approved set nonempty": true,
+        "Private HTTP 200": true,
+        "Selected model approved": true
+      },
+      "original_evidence_id": "TC-04"
+    },
+    "TC-04": {
+      "status": "Passed",
+      "criteria": {
+        "Sensitive requests enabled": true,
+        "Sensitive routing HTTP 200": true,
+        "Sensitivity preserved": true,
+        "Selected model approved": true
+      },
+      "original_evidence_id": "TC-05"
+    },
+    "TC-05": {
+      "status": "Passed",
+      "criteria": {
+        "Keyword configured": true,
+        "Sensitivity HTTP 200": true,
+        "Sensitive label": true,
+        "Keyword explanation": true
+      },
+      "original_evidence_id": "TC-06"
+    },
+    "TC-06": {
+      "name": "Economy Mode Routing",
+      "status": "Not Executed",
+      "original_evidence_id": null
+    },
+    "TC-07": {
+      "name": "Speed Mode Routing",
+      "status": "Not Executed",
+      "original_evidence_id": null
+    },
+    "TC-08": {
+      "name": "Quality Mode Routing",
+      "status": "Not Executed",
+      "original_evidence_id": null
+    }
+  }
+}
