@@ -94,9 +94,9 @@ Organizations deploying LLMs need to trade-off between the cost of inference, la
 
 \section*{Executive Summary}
 
-Today, Large Language Models (LLMs) are employed in code assistants, chatbots, and enterprise search, and enterprises which use LLMs on a large scale should be able to satisfy four contradicting requirements, which are cost, latency, quality, and privacy. While the cloud-based frontier models are the most advanced in terms of quality, they are costly and introduce latency, and sensitive prompts might leak to the external provider. On the other hand, while the open-weight models that are stored locally cost less, they might lack quality, especially when dealing with sophisticated prompts. The prompts which are sensitive (that is, which include personal identifiable information and/or credentials) represent an additional constraint, since such prompts cannot be passed to a third-party.
+Today, LLMs are employed in code assistants, chatbots, and enterprise search, and enterprises which use LLMs on a large scale should be able to satisfy four contradicting requirements, which are cost, latency, quality, and privacy. While the cloud-based frontier models are the most advanced in terms of quality, they are costly and introduce latency, and sensitive prompts might leak to the external provider. On the other hand, while the open-weight models that are stored locally cost less, they might lack quality, especially when dealing with sophisticated prompts. The prompts which are sensitive (that is, which include PII and/or credentials) represent an additional constraint, since such prompts cannot be passed to a third-party.
 
-The AetherFlow is a multi-objective LLM gateway focused on providing solutions to these challenges at once. It is designed as an asynchronous FastAPI proxy placed in-between client applications and language-model backends; in turn, the proxy decides for every query whether the answer should be retrieved from cache, local model, or cloud API. Every request goes through four stages of processing. At the Privacy Analyzer stage, the prompt is scanned using Microsoft Presidio, masked by personally identifiable information, and the confidential request is kept on local models. Semantic cache powered by Qdrant finds the similar previous query and checks the candidate answer, thus reducing the chance of false-positive cache hits. When it comes to requests routed further, fine-tuned DistilDeBERTa-v3-small classifier predicts, without any models running yet, how well each candidate is going to perform in answering the request. Finally, the request gets routed to a heterogeneous set of backends: local models Qwen3-8B and Llama-3.1-8B-Instruct provided via vLLM or Ollama and cloud models GPT and Gemini using API keys provided by the user.
+The AetherFlow is a multi-objective LLM gateway focused on providing solutions to these challenges at once. It is designed as an asynchronous FastAPI proxy placed in-between client applications and language-model backends; in turn, the proxy decides for every query whether the answer should be retrieved from cache, local model, or cloud API. Every request goes through four stages of processing. At the Privacy Analyzer stage, the prompt is scanned using Microsoft Presidio, masked by PII, and the confidential request is kept on local models. Semantic cache powered by Qdrant finds the similar previous query and checks the candidate answer, thus reducing the chance of false-positive cache hits. When it comes to requests routed further, fine-tuned DistilDeBERTa-v3-small classifier predicts, without any models running yet, how well each candidate is going to perform in answering the request. Finally, the request gets routed to a heterogeneous set of backends: local models Qwen3-8B and Llama-3.1-8B-Instruct provided via vLLM or Ollama and cloud models GPT and Gemini using API keys provided by the user.
 
 Routing is decided by the Execution Policy Engine, which weighs in the quality estimate along with cost and latency, and chooses the backend that maximizes a weighted utility function. Privacy is a hard constraint rather than a weighted component, meaning that any backends that would infringe on it are stripped out before considering any trade-offs. The weights can be customized by the administrator, meaning that the trade-off between quality, cost, and latency can be customized per installation.
 
@@ -127,10 +127,10 @@ The issue of data privacy is a separate limitation. There is no blanket prohibit
 
 AetherFlow inserts a gateway between client applications and language model backends. The process of the latter involves four steps: privacy screening, semantic caching, quality estimate prior to inference, and the execution policy with heterogeneous inference. The utility function is considering only destinations that passed the privacy screening step.
 %--------------------------------------------------------------
-\section{Purpose of this Document}
+\section{Purpose of This Document}
 \label{sec:purpose}
 
-This document attempts to provide a thorough and systematic description of AetherFlow for its audience, which includes both developers and users. In this document, the vision, objectives, and requirements of this project will be discussed, which would form the basis for the design and evaluation of a privacy-based multi-objective gateway for enterprise large language models (LLMs) routing. The four phases of the pipeline such as privacy filtering, semantic caching, pre-inference quality estimation, and heterogeneous inference execution policy have been described in detail.
+This document attempts to provide a thorough and systematic description of AetherFlow for its audience, which includes both developers and users. In this document, the vision, objectives, and requirements of this project will be discussed, which would form the basis for the design and evaluation of a privacy-based multi-objective gateway for enterprise LLMs routing. The four phases of the pipeline such as privacy filtering, semantic caching, pre-inference quality estimation, and heterogeneous inference execution policy have been described in detail.
 %--------------------------------------------------------------
 %--------------------------------------------------------------
 \section{Intended Audience}
@@ -144,7 +144,7 @@ This report is meant to attract people with varied interests in AetherFlow, and 
     \item Information security and compliance experts, who can evaluate the privacy screening pipeline, PII obfuscation, local-only execution of sensitive inputs, and auditing process.
 \end{enumerate}
 
-Basic familiarity with large language models and web services architecture is presumed by the readers.
+Basic familiarity with LLMs and web services architecture is presumed by the readers.
 
 %--------------------------------------------------------------
 \section{Definitions, Acronyms, and Abbreviations}
@@ -182,7 +182,6 @@ This chapter elaborates on the vision of AetherFlow. It contains the description
 \label{sec:domain}
 
 LLMs are currently used in code assistants, chatbots, and enterprise search applications. When it comes to enterprise applications, these use cases do not typically rely on just one model but rather rely on a mixture of highly capable commercial cloud models and light open models which run on-premises and have differing characteristics in regard to cost, performance, quality, and data processing.
-
 In the absence of an intermediary layer, the client application would be connected to just one provider. This implies that the company has to make a choice between routing all its traffic to its best cloud models and facing higher costs, latency, and exposure of prompts to external providers. On the other hand, it could restrict its users from using any other model but the one running on-premises and thus maintain the privacy of its data while losing quality of the results in difficult cases.
 
 %--------------------------------------------------------------
@@ -204,7 +203,7 @@ where $M_{\mathrm{feasible}}\subseteq\{\,m_k\in M:P(q,m_k)=0\,\}$, and $w_q, w_c
 
 The problem statement above can be divided into the following sub-problems.
 
-\subsection{Trade-offs between Cost and Quality}
+\subsection{Trade-Offs between Cost and Quality}
 Cloud LLMs consume costs per tokens; hence, the more the requests, the higher the cost. Some of the requests can actually be done by a simpler model while others require a more complex frontier model. By combining everything in one model, the company will end up either wasting on simpler tasks or being insufficient on complicated tasks. For that reason, the router has to estimate how well the selected model can handle the task before processing it.
 
 \subsection{Latency Variability}
@@ -241,10 +240,10 @@ The fundamental purpose of AetherFlow is to route each request by multi-objectiv
 The scope of the project is to create the AetherFlow as a stand-alone asynchronous FastAPI proxy server that will work in between the client applications and the backend services that will provide language models. Scope of the project includes the following components:
 
 \begin{enumerate}
-    \item Privacy Analyzer that will analyze each prompt, find any sensitive information in it and mask personally identifiable information.
+    \item Privacy Analyzer that will analyze each prompt, find any sensitive information in it and mask PII.
     \item Semantic cache that will check whether candidate response is correct before it returns the answer.
     \item Multi-objective routing engine that will perform pre-inference quality assessment and select execution target.
-    \item Serving of the request from selection of local models (Qwen3-8B and Llama-3.1-8B-Instruct) and cloud APIs (GPT and Gemini) using Bring Your Own Key approach.
+    \item Serving of the request from selection of local models (Qwen3-8B and Llama-3.1-8B-Instruct) and cloud APIs (GPT and Gemini) using BYOK approach.
     \item Observability dashboard providing data about savings, latency, cache hit ratio and queries distribution across the models.
     \item Visual Studio Code extension that will be used as a reference client application with chat panel and code-aware actions (explain, fix, refactor, and test generation).
 \end{enumerate}
@@ -332,157 +331,157 @@ The concept of AetherFlow vision has been explained in this chapter. The problem
 This chapter reviews fifteen research and engineering works related to AetherFlow. They cover model routing, quality estimation, semantic reuse, privacy analysis and efficient serving. These research areas They are not adding to the four stage pipeline, but rather support it. Published results These are attributed to their original settings. The critical analyses reveal implications for AetherFlow does not claim to be an enterprise gateway, but it does act as one.
 
 \section{Definitions, Acronyms, and Abbreviations}
-Routing is a selection of a model of a request. A cascade can execute a model, check the answer and escalate to another. Pre-inference prediction is an estimate of quality prior to generating an answer. Calibration evaluates If the predicted result matches with the observed result. A bi-encoder is used for each text, separately; a cross-encoder deals with a pair of texts. ANN is the approximate nearest-neighbor retrieval, and HNSW is an ANN technique based on graphs. A KV cache is a data structure maintained by an inference serving engine that stores attention key-value states; it is not the semantic response cache of AetherFlow, as it operates during active token generation. MoE denotes a Mixture of Experts architecture. Personally Identifiable Information (PII) refers to any data that could identify a specific individual. Credentials and access keys are managed individually, keeping secrets strictly protected even if they do not qualify as PII.
+Routing is a selection of a model of a request. A cascade can execute a model, check the answer and escalate to another. Pre-inference prediction is an estimate of quality prior to generating an answer. Calibration evaluates If the predicted result matches with the observed result. A bi-encoder is used for each text, separately; a cross-encoder deals with a pair of texts. ANN is used for retrieval, and HNSW is an ANN technique based on graphs. A KV cache is a data structure maintained by an inference serving engine that stores attention key-value states; it is not the semantic response cache of AetherFlow, as it operates during active token generation. MoE denotes a Mixture of Experts architecture. PII refers to any data that could identify a specific individual. Credentials and access keys are managed individually, keeping secrets strictly protected even if they do not qualify as PII.
 
 \section{Detailed Literature Review}
 \subsection{RouteLLM: Learning to Route LLMs with Preference Data}
-\subsubsection{Summary of the research item}
+\subsubsection{Summary of the Research Item}
 Using preference data, Ong et al. train routing mechanisms to choose dynamically between models of varying capability \cite{ref:RouteLLM}. Their experimental evaluations report cost reductions exceeding two-fold in specific workloads while sustaining overall response quality and exploring transferability across diverse model pairings. These results demonstrate the tangible cost--quality trade-off advantages of request-dependent routing, though such economic benefits cannot be assumed universally across arbitrary workloads.
 
-\subsubsection{Critical analysis}
+\subsubsection{Critical Analysis}
 The mode of supervision directly dictates comparative response quality when trained on pairwise preference data. Nevertheless, a relative preference metric does not supply an absolute quality score for each registered backend. If an answer proves unsatisfactory, AetherFlow must be able to differentiate a genuine preference divergence from a scenario where both candidate models yield inadequate responses, since preference verifiers enforce a choice even when both candidates are weak. While cross-pair transferability is encouraging, local workloads, task structures, and fluctuating provider API behaviors still require continuous verification. Furthermore, published quality and price trade-offs do not ensure that an operational gateway can maintain sub-second latency or enforce enterprise privacy boundaries.
 
-\subsubsection{Relationship to the proposed work}
+\subsubsection{Relationship to the Proposed Work}
 RouteLLM encourages a learned routing baseline and a test of if the proposed multi-output predictor. offers additional value. The same set of candidates will be provided to both baselines and AetherFlow. The amount of information passed around, but keep the privacy restrictions and generation settings the same, or change the routing weights or Report quality and expenditure, in addition to thresholds. AetherFlow's separate policy layer is needed to Turn down a preferred destination, if it's not authorized or exceeds the budget.
 
 \subsection{FrugalGPT: Cascaded Language Model Inference}
-\subsubsection{Summary of the research item}
+\subsubsection{Summary of the Research Item}
 Prompt adaptation, approximation and model cascades are investigated by Chen, Zaharia and Zou \cite{ref:FrugalGPT}. FrugalGPT Knows the order of models to use and when to take an answer. With up to 98\% lower API cost, it can compete with the best individual model in the reported experiments, or it can yield better accuracy at the same cost. These are outcomes that are specific to the study and are part of the evaluated APIs and tasks.
 
-\subsubsection{Critical analysis}
+\subsubsection{Critical Analysis}
 The cascade is used to efficiently use easy requests, and offers a practical approach to an always invoked alternative. the strongest model. It can select an answer from a generated answer, that is richer than the prompt. alone. Corresponding engineering cost is, an escalated request can take several calls; total Previous attempts should be in the latency and billing. A false answer is also acceptable for a cascade when its acceptance model is overconfident. The outcome depends on prices, workloads and acceptance levels, and more. Therefore the `largest saving reported'' is not an appropriate AetherFlow target.
 
-\subsubsection{Relationship to the proposed work}
+\subsubsection{Relationship to the Proposed Work}
 AetherFlow offers a single model selection prior to inference and a bounded recovery attempt if a single attempt is made. eligible operational failures. If resources are available, it can be helpful to use a FrugalGPT-style cascade as an experimental comparator. permit. This experiment should include all generation and verification calls, even unsuccessful ones. It will Determine if skipping the step of generating an answer pays for the loss of information which comes from relying on it In this regard, the current invention relates to prompt-only quality prediction.
 
 \subsection{Self-REF: Learning to Route LLMs with Confidence Tokens}
-\subsubsection{Summary of the research item}
+\subsubsection{Summary of the Research Item}
 Chuang et al. present a new training method for language called Self-Reflection with Error-based Feedback (Self-REF). Confidence tokens \cite{ref:SelfREF} are created using models. These tokens contribute to a scoring, which can be used to reject or escalate. of unreliable answers. The work tells that the improvements are made over verbalized confidence and token-probability. alternatives on its routing and rejection tasks.
 
-\subsubsection{Critical analysis}
+\subsubsection{Critical Analysis}
 Learning confidence from correctness feedback is more deliberate than learning with fluent language. evidence of reliability. It also brings up a critical difference: confidence in a generated answer and The number of predicted abilities to answer a prompt differs. The model needs to be trained properly for self-REF to work. and a signal which depends on the answer. This will be hard to do in closed providers that don't expose weights or the necessary probabilities. A level of confidence has to be related to the actual correctness. and are unable to permit external flow of restricted text.
 
-\subsubsection{Relationship to the proposed work}
+\subsubsection{Relationship to the Proposed Work}
 The study provides information for calibration and selective-abstention tests to the quality estimator but the proposed AetherFlow will determine if its prompt only scores are able to identify predictor does not implement Self-REF. On these requests, local models are not very good. Where an answer-based comparator is evaluated, its extra The generation cost and response delay will be reported. This allows for a comparison between pre-inference Instead of comparing their scores, they explicitly select and escalate with post-generation.
 
 \subsection{Confident or Seek Stronger: Uncertainty-Based On-Device LLM Routing}
-\subsubsection{Summary of the research item}
+\subsubsection{Summary of the Research Item}
 The work of Chuang et al. is an example that analyzes uncertainty-related escalation, from small to stronger models, in a sample of more than 1,500. configurations \cite{ref:ConfidentOrSeekStronger}. They discover that if uncertainty matches correctness it has an impact on routing, and that uncertainty distributions are very sensitive to the small model and uncertainty method. Their calibration- The purpose of the data construction procedure is to facilitate the generalization to new downstream settings.
 
-\subsubsection{Critical analysis}
+\subsubsection{Critical Analysis}
 This work has raised calibration to an empirical rather than a `known'' property of a score. A method may rank uncertainty sensibly, but require a different threshold prior to a model change. Aside from constrained deployment, it's local-to-stronger (in AetherFlow, the destination has to be able to receive the request). That's only if the local answer is uncertain. There might also be differences in calibration on general language tasks as well as selected source code and/or long conversation histories.
 
-\subsubsection{Relationship to the proposed work}
+\subsubsection{Relationship to the Proposed Work}
 AetherFlow will report model and task prediction error; hold back a calibration split and test changes in deployment configuration. The design also includes the revision of the model and the version of the predictor used so that a stale calibration is detectable. The predictor can be a held-out task in a transfer experiment. If there is deterioration, it needs to be reported and not masked by an aggregate average; domain. New versions Wait until validation is done before selecting a learned word.
 
 \subsection{LLMRouterBench: A Unified Framework for LLM Routing}
-\subsubsection{Summary of the research item}
+\subsubsection{Summary of the Research Item}
 Li et al. introduce a benchmark containing over 400,000 instances from 21 datasets and 33 models, with ten representative routing baselines \cite{ref:LLMRouterBench}. They agree that the models are complementary to each other and useful but discovers that multiple approaches are not consistently better than a basic approach. The paper is also suitable for writing on Latency-aware analysis and also an important gap to an oracle selector.
 
-\subsubsection{Critical analysis}
+\subsubsection{Critical Analysis}
 A common evaluation framework to distinguish algorithmic improvements from differences in model pools or datasets. The oracle is not a deployable decision rule, but rather a retrospective upper bound. In particular, the difficulty of recovering the best model is important for AetherFlow's case, where we are interested in using only a prompt to estimate quality. Recorded benchmark latencies may aid in analysis but are not a replacement for gateway measurement in local queueing, Provider outage, concurrent streams. A large ensemble Also raises labelling costs and maintenance requirements.
 
-\subsubsection{Relationship to the proposed work}
+\subsubsection{Relationship to the Proposed Work}
 The evaluation plan involves random, cheapest-available, fixed and quality selectors instead of Better than doing a comparison with an expensive cloud baseline. It distinguishes offline routing utility from live service behavior. The eight-model response collection pool is an experimental pool; it does not suggest that all eight providers are implemented in the gateway. Results will be available for a subset of deployments that are smaller Separately reported, and coverage and failed call counts displayed.
 
 \subsection{AutoMix: Automatically Mixing Language Models}
-\subsubsection{Summary of the research item}
+\subsubsection{Summary of the Research Item}
 Few-shot self-verification is coupled with a partially observable Markov decision process by Aggarwal et al. for the selection of an answer to escalate \cite{ref:AutoMix}. The method estimates the reliability of the smaller model's Noisy verification, output. For the five reported model, five reported dataset evaluations, The computational cost is lowered by more than 50\% at similar performance compared to the baseline computational costs assessed.
 
-\subsubsection{Critical analysis}
+\subsubsection{Critical Analysis}
 A benefit of explicitly modelling imperfect verification is that a confident verifier might be mistaken. But verification is made with an answer and may include calls or calculation. Cost reductions therefore Depending on the quality of the smaller model, the acceptance policy and checking overhead. AetherFlow is not able to port the published percentage without reproducing the relevant accounting. The selection process of AutoMix is also not just a simple weighted ranking of pre-inference estimates.
 
-\subsubsection{Relationship to the proposed work}
+\subsubsection{Relationship to the Proposed Work}
 AutoMix highlights the important distinction between generation reliability and cache reusability. In AetherFlow, the cross-encoder compares prompt similarity rather than acting as an AutoMix-style correctness verifier. Independent validity labels are therefore essential before responding to a new request with a pre-cached answer. Future answer-verification extensions would require dedicated acceptance, cost, and latency analyses, which are not assumed in the baseline gateway pipeline.
 
 \subsection{DeBERTaV3: Encoder Pre-Training for Quality Prediction}
-\subsubsection{Summary of the research item}
+\subsubsection{Summary of the Research Item}
 He, Gao, and Chen strengthen DeBERTa pre-training by replacing the tokens and gradient-disentangled embedding sharing \cite{ref:DeBERTaV3}. The paper shows improvements when using the natural-language-understanding benchmarks. These results are in favor of probing the encoder family; they are not definitive A model quality router or a certain gateway inference time.
 
-\subsubsection{Critical analysis}
+\subsubsection{Critical Analysis}
 The re-usable text encoder supports a small supervised predictor without performing all the candidate LLM. The challenging aspect is building the right targets - general language understanding is not the same thing From predicting if a specific model will address a coding request. If the backbone is to be used, the number of parameters is not enough Also excludes tokenizer cost, embeddings, runtime overhead, batching and hardware. A small checkpoint Isn't always a distilled, task specific router. Those differences make unsupported claims that... There are already calibrated quality estimates available in the off-the-shelf model.
 
-\subsubsection{Relationship to the proposed work}
+\subsubsection{Relationship to the Proposed Work}
 AetherFlow proposed the use of DistilDeBERTa-v3-small as the name of the proposed predictor. Chapter~\ref{ch:methodology} Marks out a potential small checkpoint and a clear distillation hypothesis. Model-specific regression For heads, prompt--response outcomes and held-out calibration of the labels on the outcomes are required. The engineering choice is conditional: the overhead of the selected predictor should be worthwhile given the improvement in routing Compared to simpler features or a fixed policy.
 
 \subsection{Sentence-BERT: Siamese Sentence Embeddings}
-\subsubsection{Summary of the research item}
+\subsubsection{Summary of the Research Item}
 In this tutorial, Reimers and Gurevych will demonstrate how to create sentence embeddings with siamese and Sentence-BERT triplet network structures \cite{ref:SBERT}. Independent embeddings enable efficient comparison of similarities without Encoding all pairs of them together. The paper assesses semantic similarity and retrieval related tasks, Building a groundwork for embedding-based candidate generation.
 
-\subsubsection{Critical analysis}
+\subsubsection{Critical Analysis}
 Precomputed document vectors can eliminate unnecessary work by the encoder which is useful in response cache. However, proximity does not indicate the right to re-use an answer, but rather linguistic similarity. Two prompts can vary in some subtle but important way, such as an identifier, output format or a negation. As with a fixed-length representation, information can also be lost if input is truncated. The original paper is For each and every MiniLM checkpoint used by AetherFlow, there is evidence for the representation approach; the exact MiniLM checkpoint used by AetherFlow has its own evidence for it Set model card and limits.
 
-\subsubsection{Relationship to the proposed work}
+\subsubsection{Relationship to the Proposed Work}
 AetherFlow suggests using all-MiniLM-L6-v2 for candidate retrieval and a separate vector document is provided. The dimension and supported input length. The system does not re-use if the full input to the cache is not reused. be represented safely. Embedding similarity -- only Gate 1. A pairwise gate and explicit context Checks are assessed collectively in paraphrases and challenging negative pairs. This maintains an efficient retrieval. Recognizing that nearest-neighbor ranking is not enough to be considered answer equivalence.
 
 \subsection{GPTCache: Semantic Caching for LLM Applications}
-\subsubsection{Summary of the research item}
+\subsubsection{Summary of the Research Item}
 Bang is a modular semantic response cache which provides returned answers before it stores them. invoking an LLM \cite{ref:GPTCache}. The design provides for embeddings, storage, similarity evaluation and more which are customizable. related cache operations. When it is reported that it has a faster cache-hit speed, it indicates that the benefits of reusing occur. There is repeatable requests, not guaranteed speedup for each request.
 
-\subsubsection{Critical analysis}
+\subsubsection{Critical Analysis}
 The modular structure offers a practical reference for achieving implementation. It shouldn't be called Does not automatically accept all the closest vectors: similarity evaluation is already included: of its architecture. The other application question is whether or not there is an appropriate stored response for the A new request with the same system instructions, generation policy and access scope. A high hit rate can Be misleading when unsafe / incorrect answers are regarded as correct re-use. Miss-path overhead and Expensive costs of invalidation should be measured too.
 
-\subsubsection{Relationship to the proposed work}
+\subsubsection{Relationship to the Proposed Work}
 AetherFlow extends upon existing concepts of a semantic-cache and proposes its acceptance contract. explicit. Plain requests are bound to a client and a policy version, responses are filtered prior to being stored. After retrieving vectors, and PostgreSQL checks the lifecycle state. The evaluation focuses on the accepted-hit Not only hit rate, but precision and harmful false reuse. The project is not about creating another multi-stage cache! The role of evaluation is to test a specific policy-aware integration; its contribution is to evaluate a specific policy-aware integration.
 
 \subsection{HNSW: Graph-Based Approximate Nearest-Neighbor Search}
-\subsubsection{Summary of the research item}
+\subsubsection{Summary of the Research Item}
 Malkov and Yashunin introduce a hierarchical proximity graph designed for approximate nearest-neighbor search \cite{ref:HNSW}. Traversal proceeds progressively from coarse upper layers down to fine-grained dense layers. The paper demonstrates strong retrieval efficiency and favorable scalability across empirical accuracy-versus-resource trade-offs.
 
-\subsubsection{Critical analysis}
+\subsubsection{Critical Analysis}
 As the cache expands, HNSW avoids having to compare to all the vectors stored, which is why it's appealing. It can miss out on valuable candidates and connectivity in the graph takes memory. Search speed and recall rely on the distribution of the vectors, the number of vectors in the index, the parameters, filtering, and hardware. Consequently, There is no universal sub-millisecond bound nor a fixed recall percentage that can be derived from the choice of HNSW. Another distinction between vector recall and the likelihood that a retrieved response will be correct for a novel stimulus is that the latter is a conditional probability.
 
-\subsubsection{Relationship to the proposed work}
+\subsubsection{Relationship to the Proposed Work}
 Qdrant provides the proposed HNSW index, and the application policy specifies eligible points and acceptance. AetherFlow will compare retrieval recall with exhaustive search over a representative sample of the corpus, and then response-reuse precision separately. Filters for tenants should also be included in the retrieval, and the ownership of these filters should be authoritative. rechecked before delivery. The size of the collection and the setting of the index will be noted for later use in cache growth can be differentiated from regression in verification model.
 
 \subsection{Microsoft Presidio: Sensitive-Entity Analysis}
-\subsubsection{Summary of the research item}
+\subsubsection{Summary of the Research Item}
 Presidio offers extensible entity analysis and anonymisation operations, such as pattern recognizers and NLP-based recognition \cite{ref:Presidio}. It has documentation that allows for custom recognition logic and warns that Not all sensitive information can be detected by automated detection. This is a reference to the software framework, It is not a peer-reviewed benchmark of AetherFlow's traffic.
 
-\subsubsection{Critical analysis}
+\subsubsection{Critical Analysis}
 The use of structured patterns and contextual recognition is good, as personal and secret formats need to be combined; Different properties of names. mispronunciations, along with unsupported languages, ambiguous spans, and There are, however, some important limitations, such as organization-specific confidential materials. If a secret is not detected then it is not possible to encrypt it. Similarly, the change of a name does not imply that It is fine to release surrounding code of business context. Detection, qualifying for mask, destination. Authorization and restoration have to be made separately.
 
-\subsubsection{Relationship to the proposed work}
+\subsubsection{Relationship to the Proposed Work}
 An additional input to the Privacy Analyzer is Presidio, which is accompanied by secret patterns, checksums where Confidentiality of administrators and meaningful. AES-256-GCM is a request-scoped vault offered by AetherFlow. AetherFlow's request-scoped AES-256-GCM vault is not a promise for Presidio to provide full lifecycle integration, but rather a proposed component. Tests will gauge entity-level detection and independently ensure that restricted requests are never classified. reach cloud adapters. Explicit labels and fail-closed handling for cases not covered by a recognizer score cannot resolve.
 
 \subsection{Groq TSP: Deterministic Tensor Streaming Architecture}
-\subsubsection{Summary of the research item}
+\subsubsection{Summary of the Research Item}
 In Abts et al. present a tensor streaming processor with software-controlled execution and data movement. \cite{ref:GroqTSP}. The architecture allows for using the central scheduling mechanism for predictable execution of deep-learning. workloads. This 2020 study of hardware is not a determination of The cost of LLM API tokens or prices in the present day.
 
-\subsubsection{Critical analysis}
+\subsubsection{Critical Analysis}
 One source of serving variability can be reduced in predictable execution. But gateway latency is also an issue, Encompasses network delay, admission queues, tokenization and generation length. Hardware-specific results Do not directly transfer to the local servers that are running GPUs. The use of an accelerator does not decide if a provider is authorized to receive a request. Reporting a modern commercial The number of tokens per second the citation references would correlate a processor paper with a later deployment. benchmark.
 
-\subsubsection{Relationship to the proposed work}
+\subsubsection{Relationship to the Proposed Work}
 The study factors in the reasons for the need of making measurements behind the model. AetherFlow's proposed deployment: vLLM/Ollama on local GPUs and approved GPT/Gemini APIs; The Groq hardware is not required. If another backend is added later on it is responsible to offer compatible Through an adapter, usage, latency and failure semantics. Hardware claims will be measured at the service The boundary, not the brand or processor architecture.
 
 \subsection{DeepSeek-V3: Mixture of Experts and Latent Attention}
-\subsubsection{Summary of the research item}
+\subsubsection{Summary of the Research Item}
 The DeepSeek-V3 report features a mixture-of-experts model comprising 671 billion parameters and 37 models. With multi-head latent attention and an efficient training design, it is possible to activate billion tokens per token \cite{ref:DeepSeekV3}. Its The results of the benchmark show that architecture and training decisions can have a significant impact on the results of this model. capability and efficiency.
 
-\subsubsection{Critical analysis}
+\subsubsection{Critical Analysis}
 The number of active parameters provides some insight into the computation but is not necessarily the total memory. Needs to be present to host the model. Nor is the efficiency of the training or benchmark scores a direct indicator of a provider's API price. A published family report isn't enough to determine what a subsequent service does revision. The relevant routing question is whether or not the configured endpoint is a measured quality and cost. The tasks of the project, given certain decoding settings.
 
-\subsubsection{Relationship to the proposed work}
+\subsubsection{Relationship to the Proposed Work}
 DeepSeek-V3-0324 is included in the proposed pool of eight models for responses collection. It is distinct from the small local deployment candidates and is not assumed as feasible on the single-GPU. evaluation server. It has a response record that needs to be specific to a model and acquisition date. If a historical revision is no longer accessible, the study must document coverage gaps explicitly; candidate evaluations cannot silently reuse response labels across differing model releases.
 
 \subsection{vLLM: PagedAttention for Efficient Serving}
-\subsubsection{Summary of the research item}
+\subsubsection{Summary of the Research Item}
 Side attention and the vLLM serving system are proposed by Kwon et al. for handling dynamically growing models. attention KV memory \cite{ref:vLLM}. Non-contiguous blocks and sharing minimize fragmentation and duplication. The paper claims a higher throughput (two to four times higher) for the same latency compared to the Assessed serving baselines and gains are dependent on workload and decoding configuration.
 
-\subsubsection{Critical analysis}
+\subsubsection{Critical Analysis}
 Optimizing memory use can boost the number of productive batches and services. It does NOT ensure The deadline of an individual request in overload should not be interpreted as the time to first token. The semantic response cache of AetherFlow is implemented on a different layer than vLLM's KV cache. To treat the two as the same would make it hard to see that they belong to different persons, are valid, and can be evicted. requirements. The original serving results are also not proof of performance of newer models or a particular quantization setting.
 
-\subsubsection{Relationship to the proposed work}
+\subsubsection{Relationship to the Proposed Work}
 vLLM is an upcoming local adapter for Qwen3-8B and Llama-3.1-8B-Instruct. Profiling must record Few parameters of batch limits, context length, quantization, and GPU allocation. If the gateway detects a saturation, it will consider it as: An availability constraint and maintain the local only restriction, if the local service is full. Ollama remains an alternate development runtime backend; measurements taken at one runtime will not be used to make observations at another. Unaware, the other without permission.
 
 \subsection{Speculative Decoding: Accelerating Transformer Inference}
-\subsubsection{Summary of the research item}
+\subsubsection{Summary of the Research Item}
 Leviathan, Kalman, and Matias suggest the creation of tokens with a smaller model and the subsequent verification of the tokens with a larger model. a larger model \cite{ref:SpeculativeDecoding}. They perform their sampling so as to maintain the desired distribution based on the algorithm. assumptions. The paper shows an acceleration of approximately 2-3 x the performance of the T5-XXL against the evaluated T5X implementation.
 
-\subsubsection{Critical analysis}
+\subsubsection{Critical Analysis}
 The method is based on parallel verification of likely tokens that can decrease the serial decoding work. Benefit reflects the draft acceptance and compute available; also reflects the additional draft model and rejected proposals consume resources. Distribution preservation does not mean that the information is necessarily accurate, as the target It is possible to be mistaken in modeling oneself. Speculative decoding is done within generation while AetherFlow's router is capable of more complex decoding. decides which one of the models are to be generated. These are complementary but different optimization problems.
 
-\subsubsection{Relationship to the proposed work}
+\subsubsection{Relationship to the Proposed Work}
 The technique is not a mandatory feature of a gateway, but rather an optional serving experiment. If they are allowed by a local If it is not recorded and the cost is not included in profiling, it must be done during the runtime. Router comparisons should Do not allow speculative decoding settings to change a serving optimization that is not being applied; model selection. The base architecture thus assumes no acceleration has taken place. Published speedup to be valid if deployed or taking place on suggested hardware.
 
 \section{Literature Review Summary Table}
@@ -515,133 +514,139 @@ Speculative decoding & Draft and verify tokens & Generation acceleration & Keep 
 The analyzed literature provides solid bases for economical selection, semantic retrieval, privacy, etc. Analysis: understanding the workings of things and the ability to draw inferences. These contributions can be given for each model pair, answer in each cascade, vector neighbor, detected text span, or generation batch. Combining them Has to have explicit contracts on information flow between components. A high A destination restriction is not overridden by the ``confidence score'' nor can a close vector match override Ownership and/or context similarity.
 
 The proposed research gap for AetherFlow, however, is an integration and evaluation question; can a small number of individuals' activities be integrated into a single application? The enterprise gateway provides a combination of hard privacy eligibility, reversible approved masking, policy-scoped two-gate Pre-inference quality--cost--latency selection and re-use? This is not a They say that they are the first system with any of these abilities. It is a stated design that contributes defensibly, A constrained routing formulation, and a reproducible comparison on a stated deployment pool.
-
 There are three uncertainties that direct the experiments. First, a quality predictor that can only provide a prompt may not outperform Domain shift simple routing. Second, if we come back to the cache verification, we can get more accurate accepted-hit precision, because we are more strict. However, it decreases the number of reuses and increases miss-path delays. Thirdly, capacity and privacy limitations can wipe out the utility benefit of otherwise promising cloud candidates. These results are informative Even when they restrict the extent of aggregate saving. The only way to hide them is to report only the average API cost.
-
 In the evaluation, privacy policy is therefore fixed for similar routers, and the cache- The enabled and cache-disabled runs and results are reported according to task and privacy class. It contains requests that have been denied Numerical errors and failures in denominator. Only an estimated, retrospective oracle is used. All the published percentages found in this chapter are not AetherFlow measurements.
 
 \section{Conclusion}
 The evidence of feasibility of the individual design components is identified with the fifteen works. They required the proper ingredients for their mixture. Chapters~\ref{ch:srs}--\ref{ch:design} turn those lessons into requirements and assumptions, Algorithms, interfaces and an evaluation protocol. The most important question is whether the integrated system provides Whether it can generate a component paper's, is not an important trade-off under forced constraints, it is useful trade-offs under enforced constraints. best reported result.
 
 
+
+
+
+
+
+
+
+
+
 \chapter{Software Requirement Specifications}
 \label{ch:srs}
-This chapter specifies the requirements for the proposed AetherFlow gateway.
-It also distinguishes the proposed gateway from the VS Code prototype examined
-during the early project work. The current prototype demonstrates the developer
-interface and basic request interaction. The planned gateway capabilities include
-privacy screening, temporary masking, semantic caching, model selection, database
-services, and provider controls, all of which remain subject to complete
-implementation and verification.
+In this chapter, we list out the requirements for the suggested AetherFlow gateway.
+At the same time, we differentiate the proposed gateway from the VS Code prototype,
+which we have studied during the first phase of the project.
 
-Therefore, the specifications in this chapter do not represent claims of fully
-delivered features. When a capability is proposed, the corresponding requirement
-details the expected operational behavior alongside the criteria necessary to
-validate it. All quantitative metrics in the non-functional requirements serve as
-target acceptance thresholds rather than observed benchmark results.
+The present prototype shows the development interface as well as the interaction
+of requests. The required capabilities of the gateway consist of privacy screening,
+temporary hiding, semantic caching, model selection, database services and providers
+controls; however, they should be fully implemented and tested.
+Hence, the specification provided in this chapter cannot be considered the
+guarantee of delivered features. While any capability is described in the proposal,
+the requirement will specify the needed behavior and conditions of validation.
+All non-functional quantitative metrics are the targets of acceptance; they are not
+the achieved benchmarks.
 
 \section{List of Features}
 \label{sec:list-of-features}
-The proposed AetherFlow gateway is expected to provide the following features.
+The following features can be expected from the proposed AetherFlow Gateway.
 \begin{enumerate}
-\item A developer client that sends only the code or context selected by the
-      user rather than automatically uploading the complete repository.
-\item Screening of messages, selected code, and supported attachments before
-      they are sent to a model.
-\item Classification of each request as plain, maskable, restricted, or
-      rejected.
-\item Local processing for requests that contain credentials or other content
-      classified as restricted by the organization.
-\item Optional masking of approved entity types before a request is sent to an
-      permitted external provider.
-\item Temporary protection of the original values used by the masking process.
-\item Semantic cache retrieval for eligible plain requests.
-\item Verification of a possible cache match before a cached response is
-      returned.
-\item Selection of an inference model using quality, cost, latency, privacy,
-      and capacity constraints.
-\item Request and spending limits for configured model providers.
-\item Controlled retry and failure handling when a provider or local model is
-      unavailable.
-\item Versioned policies and metadata-only audit records that do not contain
-      raw prompts, credentials, temporary mappings, or restored sensitive
-      values.
+\item Client of a developer who does not upload any code or the context but
+      allows user-selected only.
+\item Filtering of the message, user-selected code and allowed attachments
+      before they reach the model.
+\item Classification of a request as normal, masked, restricted or refused.
+\item Local processing of the request with content classified as containing
+      credentials or restricted content by the organization.
+\item Option to mask a selected entity type before forwarding an
+      appropriate request to the allowed provider.
+\item Temporary storage of original values of the items required for masking.
+\item Retrieval of semantic cache for suitable requests.
+\item Verification if there is a proper match found in the cache before
+      delivering from cache.
+\item Choosing the model with constraints like quality, cost, latency,
+      privacy, and capacity.
+\item Limits on requests and spending in the case of model providers.
+\item Retry and failure handling on availability of a model or provider.
+\item Versioned policies and audit trails which do not contain raw prompt,
+      credential information, temporary mappings or restored values.
 \end{enumerate}
 
-The feature list describes the target gateway rather than the current state of
-the prototype. The inspected VS Code extension currently demonstrates the
-developer-facing interface and a basic JSON request flow. The privacy analyzer,
-vault, semantic cache, quality predictor, database services, and provider
-admission controls are proposed components and will be marked as implemented
-only after they have been developed and tested.
+This feature list refers to the target gateway and not the existing state of
+the prototype. The VS Code extension that has been inspected is currently only
+showing the developer interface and a simple JSON request process. The privacy
+analyzer, vault, semantic cache, quality predictor, database services, and
+provider admission controls are some proposed features and will only be marked
+as implemented once they are fully developed and tested.
 
 \section{Functional Requirements}
 \label{sec:functional-reqs}
 \subsection{Functional Requirements for Developer Client}
 \begin{itemize}
 \item FR-01 (Context selection)
-The client allows the developer the freedom to select specific code snippets or conversation context to include in a request. Prior to transmission, the client displays which content will be submitted. The client shall not upload the complete repository unless the developer explicitly chooses that content.
+The client gives the developer the ability to choose which code snippets or conversation context to include in the request. Before sending the request, the client informs the user about the content that will be sent. The client must not send the entire repository unless the developer has chosen this content.
 \item FR-02 (Authenticated dispatch)
-The planned client transmits validated chat-completion requests to the gateway via an authenticated, encrypted transport connection. The inspected prototype currently operates using a JSON call to the \texttt{/chat} endpoint, while integration with the planned \texttt{/v1/chat/completions} interface represents future implementation work.
+The future client sends authorized chat-completion requests to the gateway through an authenticated and encrypted transport connection. The reviewed prototype currently works with the help of a JSON call to the \texttt{/chat} endpoint, and the integration with the future \texttt{/v1/chat/completions} endpoint is the work for the future.
 \item FR-03 (Response delivery and cancellation)
-The client distinguishes between completed, partial, cancelled, and failed responses. When streaming is enabled, it maintains the sequence of supported server-sent events. Responses subject to reversible masking remain buffered until the gateway completes the required authorization and restoration checks.
+The client differentiates between completed, partial, cancelled and failed responses. In case of streaming being enabled, it preserves the order of supported server-sent events. Masked responses should be buffered until the gateway performs the necessary authorization and unmasking checks.
 \item FR-04 (Result provenance)
-The client explicitly indicates whether a response was retrieved from the semantic cache, executed on a local model, or returned by an external provider. It shall also indicate when a displayed metric is simulated or unavailable. Cost and latency figures are derived from recorded measurements or documented reference benchmarks rather than mock values.
+The client clearly states whether the response was obtained from the semantic cache, from the local model or from the external provider. Also, the client must state if the shown metric is simulated or not. Costs and delays have been based on real measurements or reference benchmarks and not fictitious figures.
 \end{itemize}
 
 \subsection{Functional Requirements for Enterprise Administrator}
 \begin{itemize}
 \item FR-05 (Policy versioning)
-An authorized administrator can publish new immutable policy versions that supersede previous configurations. Each policy version defines quality, cost, and latency weights, usage limits, privacy rules, and operational bounds required by the router. Configured weights must be non-negative and sum to one. New requests adopt the latest valid version, whereas in-flight requests continue using the version assigned at admission. Emergency revocations immediately prevent subsequent dispatches.
+A properly authorized administrator is able to publish new immutable policy versions which override previous policy versions. Each policy version specifies weights on quality, cost, and latency, limits on usage, privacy policies, and operation bounds required by the router. All weights have to be non-negative and their sum is one. New requests use the latest valid version of the policy while in-flight requests keep using the version associated with their admission. An emergency version revocation immediately prohibits any further dispatches.
 \item FR-06 (Model registry)
-The administrator can register approved model endpoints alongside deployment specifications, protected credential references, pricing rates, token throughput limits, and metric-freshness indicators. Learned routing excludes any model revision until the predictor obtains validated coverage for that revision.
+The administrator is able to register model endpoints along with deployment details, credential references, pricing rates, throughput limits, and freshness of metrics. Learned routing does not include any model version until the predictor learns coverage of the version.
 \item FR-07 (Budget controls)
-The gateway enforces daily token limits as well as daily and monthly spending limits across clients and organizational departments. The admission step establishes a conservative upper bound for anticipated token usage and charges; candidates lacking verifiable price bounds are excluded rather than treated as zero-cost.
+The gateway imposes daily token limits as well as daily and monthly spending limits for clients and departments. The admission phase sets a conservative upper bound on token consumption and charges; requests with no verifiable price bounds are not admitted instead of being treated as free-of-charge.
 \item FR-08 (Audit access)
-Authorized users can review tenant-level metadata events. Audit exports strictly exclude raw prompts, detected sensitive values, credentials, vault plaintext, and restored completion text. Administrative modifications document the responsible actor and the specific policy or model version that was updated.
+Authorized users are able to access tenant-level metadata events. The audit of exportations never includes raw prompt data, sensitive information detected, credentials, plain-text vault data, and restoration of completion text. Modifications in the administrative process detail who made the changes and which policy/model version it affects.
 \end{itemize}
 
 \subsection{Functional Requirements for Gateway Core and Router}
 \begin{itemize}
 \item FR-09 (Complete screening)
-Prior to model dispatch, the Privacy Analyzer checks the user message, selected conversation history, system context, and supported attachments. The request is halted if it encounters unsupported encodings, oversized payloads, or analyzer failures before any model call is initiated.
-\item FR-10 (Hard eligibility)
-Credentials and content classified as confidential by an administrator remain strictly local-only. An explicit confidential classification overrides any permissive recognizer output. Masking shall not be employed to reclassify a local-only request as externally eligible.
-\item FR-11 (Approved masking)
-Policy-approved entity types can be replaced with opaque, request-scoped placeholders. The masking stage deterministically resolves overlapping entity spans and validates the complete modified payload prior to dispatch. If policy disallows the chosen external destination, the request is executed locally or rejected.
-\item FR-12 (Encrypted mapping)
-When masking is applied, the vault secures the mapping between each placeholder and its original value using AES-256-GCM. Encrypted records bind to a unique 96-bit nonce, a 128-bit authentication tag, and authenticated metadata specifying the tenant, client, request, policy version, and expiry. The vault rejects altered or mismatched mappings.
-\item FR-13 (Controlled restoration)
-Restoration is restricted strictly to the originating authenticated client, tenant, request, and active mapping. An unrecognized or modified placeholder triggers a controlled failure. Vault mappings are purged upon successful completion, user cancellation, timeout, or expiration. Masked execution halts immediately if vault verification fails.
-\item FR-14 (Cloud dispatch boundary)
-Each cloud adapter receives an eligibility decision bound directly to the outgoing payload and authorized endpoint. Client-supplied flags cannot authorize external transmission. Maskable requests require both an authorized masking decision and provider clearance.
-\item FR-15 (Two-gate reuse)
-Semantic cache lookup is restricted to eligible plain requests. Before returning a candidate, the gateway evaluates both similarity gates and verifies client identity, tenant scope, policy version, context, source-model version, readiness, ownership, and expiry. Failing any check treats the request as a cache miss.
+Before the model is dispatched the Privacy Analyzer verifies user message, selected conversation history, system context and supported attachments. If it can't support any of those encodings, or if the payload is too large or if the analyzer fails before some call to the model is attempted, the request is blocked.
+Fire Rescue 10 (Hard eligibility)
+Administrator designated confidential credentials and content is strictly local only. Any permissive recognizer output is overridden by an explicit confidential classification. No masking shall be used to designate a Local Only request as being eligible for masking.
+FR-11 (Approved masking)
+Placeholder entity types may be used instead of Policy approved entity types and can be specified by request. The masking stage is a deterministic process that resolves overlapping entity spans and validates the entire modified payload before sending it on. The request is performed locally if the destination is incompatible with the policy or rejected if it is not.
+An encrypted mapping (FR-12)
+If masking is enabled, the vault keeps the mapping from each placeholder to its corresponding value by employing AES-256-GCM. Encrypted records are attached to a unique 96-bit nonce, 128-bit authentication tag, and authenticated metadata that include tenant, client, request, policy version, and expiry. Vault disallows changed or mismatching mappings.
+item FR-13 (Controlled restoration)
+Only the originating authenticated client, tenant, request and active mapping can be restored. If a placeholder is not recognized or is modified, then a controlled failure is triggered. Vault mappings will be purged when they are completed successfully, cancelled by the user, time out, or expire. If vault verification fails, it stops the masked execution right away.
+The cloud dispatch boundary is FR-14.
+The authorization message is attached directly to the cloud adapter and the outgoing payload and endpoint that are eligible. External transmission can not be authorized by client supplied flags. Maskable requests must be accompanied by an authorized masking decision and provider clearance.
+\item Reuse of FR-15 (Two-gate reuse)
+Only capable plain requests can be used for semantic cache look up. A gateway checks criteria before returning a candidate, such as similarity gates, and client identity, tenant scope, policy version, context, source-model version, readiness, ownership, and expiry. If none of the checks pass, the request is considered a cache miss.
 \item FR-16 (Safe cache writes)
-Only successful responses to approved plain requests are stored as reusable cache entries. Partial responses, masked queries, restricted prompts, and failed attempts generate no cache entries. Pending cross-store writes remain recoverable through an idempotent reconciliation routine.
+Successfully responded plain requests are only stored as re-usable cache entries. Partial responses, masked queries, restricted prompts, and failed attempts do not add to the cache. Any cross-store writes that are pending will be recoverable using an idempotent reconciliation procedure.
 \item FR-17 (Quality prediction)
-The predictor produces finite quality estimates for supported model revisions. Missing predictions, out-of-bounds input lengths, or unsupported model revisions disqualify the candidate from routing. If no viable candidates remain, the gateway issues a controlled error.
+The predictor generates finite quality estimates of supported revisions of the model. If any of the predictions are missing, if the input length is out of bounds, or if the model revision is not supported, the candidate is disqualified from being routed. If there are no candidates found, then the gateway will generate a controlled error.
 \item FR-18 (Utility selection)
-The router filters out candidates failing privacy, health, context length, capacity, or budget constraints. It then evaluates the remaining candidates using the multi-objective utility function defined in Chapter~\ref{ch:methodology}. Ties are resolved first by estimated API expense and subsequently by model identifier.
+The router eliminates any candidates that don't meet the privacy, health, context length, capacity, or budget requirements. It then considers the candidates remaining after this step and filters out the rest based on the multi-objective utility function discussed in Chapter~\ref{ch:methodology}. Model identifier is used as a tiebreaker if the estimated API expense is the same.
 \item FR-19 (Atomic admission)
-The gateway dispatches requests only after an admission transaction validates and reserves the necessary token and budget allocations. Reconciliation logs all invocation attempts and maintains active reservations until final accounting is confirmed.
-\item FR-20 (Failure recovery)
-The gateway attempts at most one recovery execution before content delivery begins. Prior to any failover attempt, it re-evaluates privacy eligibility, endpoint revocations, provider availability, and budget limits. If no backup meets these criteria, the gateway returns a controlled error.
-\item FR-21 (Stream integrity)
-If an upstream provider fails before or during streaming, the gateway emits an explicit terminal stream error. It does not append a secondary model completion onto an interrupted stream. Active provider streams are cancelled and ephemeral states are cleaned up upon client disconnection.
+Requests are sent out by the gateway only when an admission transaction has succeeded in validating and allocating the required amount of tokens and budget. Reconciliation keeps track of all attempts at invoking and holds on to active reservations until final accounting is completed.
+Failure recovery (FR-20)
+A gateway will try multiple recovery attempts to start content delivery before it will fail. It takes into account privacy eligibility, endpoint revocations, provider availability and budget limits before attempting to fail over. The gateway returns a controlled error if there is no backup that satisfies these requirements.
+\item FR-22 (On-farm research)
+The gateway will terminate the stream explicitly when an upstream provider fails before or while streaming. Never adds a secondary completion to an interrupted stream. Any provider streams that are active are cancelled and ephemeral states are removed when the client disconnects.
 \item FR-22 (Telemetry)
-For each admitted request, the gateway logs the policy version, model identifier, stage latency metrics, execution path, token usage, and terminal status. Telemetry records omit raw prompts, credentials, mapping secrets, and unmasked values. Append-only logging permissions are not treated as cryptographic tamper resistance, which remains a dedicated operational control.
+The gateway stores policy version, model identifier, stage latency metrics, execution path, usage of the token, and the terminal status for each request that is accepted. Telemetry does not include raw prompts, credentials, mapping secrets, and unmasked values. The permissions for append only logging are not considered as cryptographic tamper resistance, it is still an operational control.
 \end{itemize}
 
 \section{Quality Attributes}
 \label{sec:quality-attributes}
-Security and tenant isolation take precedence whenever the gateway cannot determine privacy eligibility with confidence. Tenant identification is established through cryptographic authentication rather than untrusted request parameters. Local execution is likewise governed by strict authorization and service identity boundaries; running a service within a local network does not, by itself, provide sufficient protection.
+Priorities in such a case go to security and tenant isolation.
+Tenant identity is verified using cryptographic means and is never relied upon on request parameters.
+Local execution, on the other hand, is bound by the rules of strict authorization and service identity isolation. The mere presence of a service in the local network is not sufficient to assure its execution.
 
-Reliability requires the gateway to maintain a stable, auditable state even when a response cannot be delivered. Local fallback execution is permitted only when the target is fully authorized, local compute capacity is verified, and admission constraints are satisfied. Consequently, the availability objective does not imply that an output must be generated for every request regardless of failure conditions.
+Regarding reliability, the gateway is required to remain in an auditable state in spite of the impossibility of sending a proper response. Local fallback execution is allowed if the target is authorized, local computing capacity exists, and admission criteria have been fulfilled. This way, the requirement of availability does not mean that every request should receive an output despite any issues.
 
-Maintainability and extensibility are achieved through strongly typed interfaces and versioned configuration schemas. Introducing a model that utilizes an existing protocol requires only a registry update, whereas supporting a new protocol requires creating a dedicated provider adapter backed by contract integration tests. Predictor performance coverage is tracked independently across each model revision.
+Finally, maintainability and extensibility are provided through strong typing and versioned configurations. Adding a model based on an already supported protocol just requires adding the respective entry into the registry while adding support of a new protocol demands development of a provider adapter together with corresponding contract integration tests. Predictors' performance coverage is tracked separately for each model version.
 
-Usability and interoperability require clear provenance indicators, actionable error codes, and compliance with a well-documented subset of standard chat-completion interfaces. Unsupported external tools, multimodal payloads, or proprietary provider extensions are rejected explicitly rather than allowed to operate without verification.
+In terms of usability and interoperability, there needs to be the presence of provenance markers, meaningful error codes, and compliance with a subset of standard interfaces for chat completion. Anything outside of this is explicitly forbidden, rather than being ignored for lack of verification.
 
 \section{Non-Functional Requirements}
 \label{sec:non-functional-reqs}
@@ -651,37 +656,37 @@ The quantitative figures in Table~\ref{tab:nfr} represent provisional acceptance
 \caption{Non-functional targets and validation conditions}\label{tab:nfr}\\\hline
 \textbf{ID} & \textbf{Target} & \textbf{Validation conditions}\\\hline\endfirsthead
 \hline\textbf{ID} & \textbf{Target} & \textbf{Validation conditions}\\\hline\endhead
-NFR-01 & Warm policy-decision latency p95 below 15\,ms; miss-path p95 below 150\,ms, excluding model generation time. & Evaluate screening, cache lookup, quality prediction, and policy computation separately. Benchmark at 1, 10, 50, and 100 requests/s using 256-token inputs; record queue delays and saturation thresholds.\\\hline
-NFR-02 & Verified cache-hit round-trip latency p95 below 200\,ms. & Benchmark the client-to-gateway-to-client round trip on a dedicated LAN with 10,000 cached records, 1,024-token response limits, active verification gates, and warm processes. Report cold starts and cache misses independently.\\\hline
-NFR-03 & Sustain 500 concurrent SSE connections in transport-only validation. & Run a simulated backend streaming at a constant event rate for 15 minutes. Log disconnections, queue buffer growth, and event-delivery delays, targeting p95 below 250\,ms without implying 500 active local generations.\\\hline
-NFR-04 & Zero cloud dispatches for requests classified as restricted, with at least 99\% secret-recall on synthetic evaluation datasets. & Test destination enforcement independently from entity extraction accuracy. Report precision, recall, false negative rate, false positive rate, corpus size, and confidence intervals across each entity class.\\\hline
-NFR-05 & Gateway service availability objective of 99.9\%. & Evaluate automated health and authentication probes across a 30-day observation window; brief load tests or peak observed uptimes are excluded as proof of objective attainment.\\\hline
-NFR-06 & Gateway and resident helper-model memory footprints remain within budget, targeting at most 4\,GiB idle resident memory per helper model. & Track peak resident memory across gateway workers and model runtimes. Record PostgreSQL, Qdrant, and model-weight allocations separately, noting any exceeded limits.\\\hline
-NFR-07 & Requests and vault mappings maintain strict isolation across tenants and execution scopes; invalid restoration attempts are rejected and purged. & Test scope boundary alterations, expired mappings, manipulated authentication metadata, concurrent client calls, and early cancellations. Verify rejection, metadata-only logging, and cleanup.\\\hline
-NFR-08 & Authoritative policy updates propagate to new requests within 5 seconds; emergency revocations are checked prior to dispatch. & Test two gateway workers with delayed update notifications. Verify the authoritative policy version at admission and ensure that a single decision does not mix values from different policy versions.\\\hline
+NFR-01 & Warm decision-latency p95 below 15\,ms; miss-path p95 below 150\,ms, minus time to generate the model. & Test screening, caching, quality-prediction, and decision-generation individually. Benchmark the system at 1, 10, 50, and 100 requests/s with 256-token input messages; record delays in queue and saturation points.\\\hline
+NFR-02 & Verify cache hit round-trip latency p95 below 200\,ms. & Benchmark the client-to-gateway-to-client round trip using a dedicated LAN with 10,000 cache entries, 1,024-token responses, verification gates, and warm processes. Measure cold starts and cache misses independently.\\\hline
+NFR-03 & 500 concurrent SSE connections with only transport validation. & Simulate a steady flow of events from a backend streamer for 15 minutes. Measure disconnects, queue buffer growth, and event-delivery latency, aiming at p95 below 250\,ms without assuming 500 active local generations.\\\hline
+NFR-04 & No cloud dispatch for requests marked restricted, achieving 99\% secret-recall on synthetic test data sets. & Evaluate destination enforcement separately from entity extraction quality. Precision, recall, false negatives, false positives, size of corpus, and confidence intervals must be reported for each entity type. \\\hline
+NFR-05 & Availability objective of gateway services at 99.9\%. & Test the automated health and authentication probes for 30 days; load testing is not sufficient to prove the objective has been met.\\\hline
+NFR-06 & Gateway and resident helper-model memory footprints will be within the budget, aiming for maximum 4\,GiB idle resident memory per helper model. & Measure peak resident memory for gateway workers and model runtimes. Document allocations for PostgreSQL, Qdrant, and model weights, mentioning when any allocation exceeds the limit.\\\hline
+NFR-07 & Requests and vault mappings will be isolated strictly between tenants and execution scopes; invalid restoration will be rejected and cleaned up. & Check scope boundaries modification, expired mappings, manipulation of authentication metadata, client calls, and cancellation. Check that there is rejection, only metadata logged, and cleaning up of mappings.\\\hline
+NFR-08 & Policy updates will be propagated to new requests within 5 seconds; emergency revocation checks are made before dispatching. & Two gateway workers are tested with delayed notification of the update. Check policy version at request admission and check that decision is not mixing values from different policy versions.\\\hline
 \end{longtable}\endgroup
 
 \section{Assumptions}
 \label{sec:assumptions}
-These assumptions establish concrete operational boundaries for the proposed architecture. Each condition must be verified prior to production deployment; if an assumption fails, defined fallback procedures determine system behavior.
+The assumptions set boundaries on how the architecture can actually be deployed operationally. Each assumption needs to be proven prior to any deployment; failure to meet an assumption triggers predefined system behavior.
 \begin{itemize}
-\item A-01 Protected local boundary. Local inference engines, helper models, cryptographic vaults, and the gateway operate within authenticated service boundaries inside an organization-controlled network. This guarantees that screening and embeddings remain local, even when evaluating open-weight models.
-\item A-02 Administrative confidentiality policy. Confidentiality classifications are defined explicitly by authorized administrators across projects, data labels, maskable entity classes, and approved providers. Automated entity recognition cannot infer all business-sensitive context; external dispatch is barred whenever an applicable policy is absent.
-\item A-03 Local key management. A local secret manager provides per-request cryptographic material and wraps encryption keys for an isolated vault process. Plaintext keys are never stored in PostgreSQL, Qdrant, source code, or application logs. If the secret manager is unreachable or unconfigured, requests fail closed immediately.
-\item A-04 Nonce and request binding. A fresh 256-bit data key is provisioned for each mapping session alongside a unique 96-bit nonce. Any re-encryption requires a new distinct key. A 128-bit authentication tag binds the encrypted payload to tenant, client, request, policy, and expiration metadata, ensuring nonce uniqueness and preventing cross-request substitution.
-\item A-05 Volatile mapping lifetime. Encrypted mappings reside in an ephemeral process-owned memory store with a maximum lifetime of 5 minutes, bounded by the request deadline. Mappings are deleted promptly upon completion or cancellation and do not persist across process restarts.
-\item A-06 Local inference capacity. The deployment assumes at least one approved local model is available on the evaluation host. When that model is busy or offline, the gateway rejects the request with a controlled error rather than routing restricted content to external clouds.
-\item A-07 Supported cloud contracts. External integrations target specified GPT and Gemini endpoints supplied with enterprise credentials. Context windows, billable token parameters, concurrency quotas, and pricing schedules must be known in advance; models with unbounded costs are excluded from admission.
-\item A-08 Estimate freshness. Routing heuristics rely on recent latency samples and versioned pricing schedules. Latency observations older than five minutes are replaced with conservative default estimates or result in candidate exclusion pending fresh telemetry.
-\item A-09 Training evidence. Supervised quality predictors require labeled response corpora reflecting the target domain distribution. Models lacking domain evaluation data cannot silently inherit weights or quality predictions from disparate revisions.
-\item A-10 Conservative cache scope. Semantic cache reuse is restricted to the originating authenticated client under an immutable policy version. Full prompt context, system instructions, and generation parameters must match stored fingerprints; masked and restricted queries bypass caching entirely.
-\item A-11 Bounded recovery. The gateway permits at most one recovery attempt before delivering output to the client, subject to a 120-second global request timeout. Default connection, first-token, and idle timeouts are set to 5, 30, and 15 seconds, respectively.
-\item A-12 Retention and clocks. Distributed gateway services operate with synchronized UTC clocks. Approved cache text entries expire after 24 hours, while metadata audit logs persist for up to 30 days. Read queries enforce expiration policies even if automated purge jobs have not completed.
+\item A-01 Protected local boundary. Inside an organization-controlled network, there are several service boundaries that are authenticated and within them are several local inference engines, helper models, cryptographic vaults, and the gateway. This ensures the screening and embeddings are local, even in the case of open-weight models.
+\item A-02 Administrative confidentiality policy. Project, data labels, maskable entity classes and approved providers explicitly define the classifications of confidentiality. Even though the context may be important for the business, automated entity recognition is not able to extract all the context; dispatch is not possible when a relevant policy does not exist.
+\item A-03 Local key management. A per request secret manager supplies cryptographic material and wraps encryption keys for an isolated vault process. It is never stored in PostgreSQL, Qdrant, source code, or logs of the application. Requests fail closed immediately if the secret manager is unavailable or not configured.
+\item A-04 Nonce and request binding. New data key (256-bit) and new nonce (96-bit) are provisionsed for each mapping session. If security is re-established, a new distinct key is needed for the re-encryption. A 128-bit authentication tag is included that creates a binding between the encrypted payload and tenant, client, request, policy, and expiration metadata, while also enabling the uniqueness of the nonce (first used once) and the prevention of cross-request substitution.
+\item A-05 Mapping lifetime of volatile. Encrypted mappings are stored in an ephemeral process-owned memory store which lasts up to 5 minutes, limited by the request deadline. Mappings are removed as soon as they are completed or cancelled, and are not retained for later use.
+\item A-06 Capacity for local inference. It assumes that there is at least one approved local model in the evaluation host. If that model is busy or unavailable, the gateway will not route limited content to external clouds, but will return the request with a controlled error.
+\item A-07: Support cloud contracts. External integrations connect to specific GPT and Gemini endpoints provided with enterprise credentials. Context windows, billable token parameters, concurrency quotas and pricing schedules are all known beforehand and no models with unbounded costs will be admitted.
+\item A-08 Estimate freshness. Routing heuristics are based on the latest latency samples and versioned pricing schedules. Observations older than five minutes are folded if they are more than that, or are considered as default values - depending on what is the default value - if they are less than five minutes, or result in the exclusion of the candidate while waiting for new telemetry data.
+\item A-09 Training evidence. Supervised quality predictors need response corpora that are labeled based on the distribution of the target domain. If there is no data for a model's domain, then weights or quality predictions cannot be silently inherited from different revisions.
+\item A-10 Conservative cache scope. Only the authenticated client with which the transaction was initiated can reuse the semantic cache for an immutable policy version. The full prompt context, the system instructions, and the generation parameters must be matched with the fingerprints stored in the cache; masked and restricted queries do not go through the cache at all.
+\item A-11 Bounded recovery. The gateway allows for one recovery attempt and outputs to the client before expiring after 120 seconds from the request. The default connection and first-token and idle time-outs are 5, 30 and 15 seconds, respectively.
+\item A-12 Retention and clocks. Distributed gateway services run on synchronized UTC clocks. The cache text entries are valid for 24 hours after they are approved, and metadata audit logs are valid for up to 30 days. Queries are enforced to expire even when automated purge jobs are not finished.
 \end{itemize}
 
 \section{Use Cases}
 \label{sec:use-cases}
-The six use cases summarized in Tables~\ref{tab:uc01}--\ref{tab:uc06} follow the structured actor/action and system/response methodology. These workflows articulate the intended operational behavior of the gateway and supply concrete test scenarios for functional verification. They do not claim that all interactions are fully deployed, and numeric timings presented in interface mockups serve solely as illustrative examples rather than benchmarked performance.
+The six use cases discussed in Tables~\ref{tab:uc01}--\ref{tab:uc06} adhere to the structured actor/action and system/response approach. The process flows define the desired operation of the gateway and provide test cases for functional testing. They do not imply that all communication is implemented yet, and timings shown in interface mock-ups are purely illustrative and not based on any benchmarks.
 
 
 \begin{table}[H]\centering\small
@@ -781,7 +786,7 @@ A & The verifier, database, version, ownership, or expiry check fails. & B & Tre
 5 & Administrator reviews the confirmation. & 6 & Workers receive the update, and new requests verify the current policy version. \\ \hline
 7 & Administrator examines a request trace. & 8 & The trace identifies the policy used for that request; an emergency endpoint revocation is checked before dispatch. \\ \hline
 \multicolumn{4}{|c|}{\textbf{Alternative Flow}}\\\hline
-A & The weights are invalid or publication conflicts with a concurrent edit. & B & Reject the update with an explanation and preserve the last valid version. Increasing the cost weight does not guarantee that a local model will be selected. \\ \hline
+A & The weights are invalid or publication conflicts with a concurrent edit. & B & Refuse the update by explaining it and keep the last working version. Increasing the cost weight doesn’t necessarily imply that the local model will be selected. \\ \hline
 \end{tabularx}\end{table}
 
 \begin{table}[H]\centering\small
@@ -840,15 +845,14 @@ A & Output has already reached the client, or no eligible alternative remains. &
 \label{sec:hardware-software-reqs}
 \subsection{Hardware Requirements}
 \label{subsec:hardware-reqs}
-Table~\ref{tab:hardware_specs} lists proposed development and evaluation
-configurations. It does not describe purchased equipment or establish the
-minimum hardware required by the final system. The development configuration
-uses 16\,GiB as a practical baseline; 32\,GiB is recommended only when several
-services or local model experiments run concurrently. A GPU is not required
-by the current VS Code prototype. It is optional for future local-model
-experiments, and any evaluation using one must report the hardware actually
-used.
+Table~\ref{tab:hardware_specs} shows the proposed configurations for development and testing.
+It does not reflect on purchased devices or minimal requirements for hardware of the final system.
+The development configuration uses 16\,GiB as the practical minimum; 32\,GiB is necessary only
+in case several services are operated simultaneously. GPU is not needed for the current
+VS Code prototype. It is an option for further experiments with the local model,
+and all tests with its use must mention the hardware used.
 \begin{table}[!htbp]\centering\small
+\caption{Recommended hardware assumptions for development and evaluation}\label{tab:hardware_specs}
 \begin{tabularx}{\textwidth}{|P{2.5cm}|X|X|}\hline
 \textbf{Component} & \textbf{Development configuration} & \textbf{Assumed evaluation server}\\\hline
 CPU & 4-core x86-64 or better & 8 physical CPU cores or better; helper workers measured separately\\\hline
@@ -857,103 +861,95 @@ GPU & Not required for the current prototype; optional for local-model trials & 
 Storage & 512\,GB SSD for the operating system, tools, dependencies, databases, and test data & 512\,GB SSD or larger, depending on locally stored models, vectors, and evaluation logs\\\hline
 Network & Stable LAN & 1\,Gbps LAN; cloud round-trip delay measured separately\\\hline
 \end{tabularx}
-\caption{Recommended hardware assumptions for development and evaluation}\label{tab:hardware_specs}
-\end{table}
-If a local 8-billion-parameter model is evaluated, its memory requirements
-must be measured separately because the weights, KV memory, runtime buffers,
-and concurrent sequences can exceed the gateway's ordinary host-memory
-requirements. Quantization may reduce the weight footprint, but it does not
-remove these other costs. We will therefore establish the context and
-concurrency limits through a memory-profile experiment before load testing.
-If local inference is not part of the implemented evaluation, the report will
-not claim that a dedicated GPU is required.
 
-If both local model identities are retained for offline comparison, their
-benchmark evaluations may be performed sequentially. A live routing experiment in
-which both models must be available concurrently must provide separate serving
-capacity or include the model-switching delay in overall latency measurements.
-For CPU-based helper models, dedicated worker resources shall be used so that
-background computations do not block the network event loop.
+\end{table}
+When the local 8 billion parameters model is tested, its memory footprint needs to be determined separately, since the weights, KV memory, runtime buffers, and concurrency of sequences could surpass the gateway’s normal host-memory footprint. Although quantization might decrease the footprint of the weights, it will not eliminate the above costs. We will thus determine the context and concurrency through a memory profiling experiment before conducting the load test. In case local inference is not included in the implementation of the evaluation, the report will not state that a separate GPU is needed.
+
+If both local model identities are kept for offline comparisons, their benchmark evaluations can be conducted sequentially. The live routing experiment where both models need to be served concurrently will need to offer separate serving capacity or consider the model switching delay in latency measurements. For CPU-based helper models, dedicated worker resources will be allocated to ensure that the background computation does not hinder the network event loop.
 
 \subsection{Software Requirements}
 \label{subsec:software-reqs}
-The planned gateway architecture is implemented using Python 3.11, FastAPI,
-Uvicorn, HTTPX, Pydantic, and asynchronous access to PostgreSQL. PostgreSQL holds
-the authoritative relational state, while Qdrant maintains vector representations
-and retrieval metadata required by the semantic cache. Microsoft Presidio and
-project-specific recognizers are employed for sensitive-entity analysis.
-Sentence-Transformers and HuggingFace Transformers support embedding and
-quality-prediction substeps. ONNX Runtime will only be introduced after an
-exported checkpoint completes an output-parity validation test. Either vLLM or
-Ollama may serve approved local models, and external adapters connect strictly
-to configured provider endpoints.
+The proposed gateway architecture uses Python 3.11, FastAPI, Uvicorn, HTTPX,
+Pydantic, asynchronous connection to PostgreSQL and asynchronous access to
+PostgreSQL. The PostgresSQL stores definitive relational state, while Qdrant
+stores vectors and information needed by the semantic cache. Microsoft Presidio and
+entity recognizers specific to the project will be used for analyzing sensitive
+entities. Sentence-Transformers and HuggingFace Transformers will enable embedding
+and quality prediction sub-steps, respectively. ONNX Runtime will become part of the
+architecture only once the output-parity validation of exported checkpoint takes
+place. vLLM and Ollama models will be candidates to be used as local models.
+Adapters are expected to connect to provider endpoints only.
 
-The reference developer client is authored in TypeScript using VS Code extension
-APIs. Its current JSON-over-HTTP implementation will be adapted once the streaming
-gateway contract is integrated. Development environments utilize Windows with
-WSL2, whereas the evaluation server runs a supported Ubuntu LTS release. Docker
-Compose ensures repeatable service configuration across hosts. Package builds,
-CUDA driver compatibility, model revisions, and container image digests are
-recorded in the experiment manifest. The baseline six-entity design does not
-depend on Kubernetes, Helm, TensorRT, or Redis.
-
-Software dependencies require joint verification, as nominal minimum versions do
-not guarantee that a runtime supports a particular model architecture or
-quantization format. In advance of marking a backend active, startup compatibility
-checks verify its tokenizer, context length limits, streaming protocol, and
-token accounting accuracy. Credentials are provided exclusively through protected
-configuration stores and omitted from experiment manifests and published reports.
+The proposed developer client uses TypeScript and VS Code extension APIs. Its current
+JSON-over-HTTP implementation can only be adapted once the streaming gateway API
+gets designed. Developer environment will use Windows with WSL2, whereas server will
+use one of supported Ubuntu LTS versions. Docker Compose ensures repeatable
+configuration of services on different hosts. Package versions, CUDA driver version,
+model version and container images' digests are logged to the experiment manifest.
+The baseline architecture with six entities does not use Kubernetes, Helm,
+TensorRT or Redis.
+The software dependencies need to be jointly verified since the nominal minimum
+versions do not ensure that the runtime will support a certain model
+architecture or quantization type. Prior to making the backend active, the
+startup verification checks whether it supports the tokenizer, maximum
+context length, streaming, and token accounting. The credentials are provided
+only via configuration and are never included in the experiment manifests.
 
 \section{Graphical User Interface}
 \label{sec:gui}
-The proposed interfaces comprise a reference VS Code client extension and an
-administrative telemetry dashboard. This design documentation explicitly
-distinguishes preliminary interface mockups from the existing prototype.
-Costs, percentages, latency metrics, and provider labels depicted across mockups
-are illustrative and do not verify that corresponding cloud services are active.
+The proposed interfaces include a VS Code client extension reference and an
+administrative telemetry dashboard. This design documentation clearly
+differentiates the preliminary interface mockups from the current prototype.
+Costs, percentages, latencies, and service provider tags displayed in the mockups
+are indicative only and do not confirm that the corresponding cloud services are up and running.
 
-Figure~\ref{fig:gui_mockups} illustrates the proposed AetherFlow user interfaces.
-part (A) represents the developer client extension within Visual Studio Code,
-and part (B) depicts the enterprise telemetry and administration console.
+Figure~\ref{fig:gui_mockups} demonstrates the proposed AetherFlow user interfaces.
+Figure~\ref{fig:gui_mockups}(A) shows the developer client extension for Visual Studio Code,
+while Figure~\ref{fig:gui_mockups}(B) presents the enterprise telemetry and administrative console.
 
 \begin{figure}[p]
 \centering
 \includegraphics[height=0.43\textheight,trim=0bp 0bp 914bp 0bp,clip]{Figures/gui_mockups_white.png}
 \par\vspace{0.5em}
 \includegraphics[height=0.43\textheight,trim=870bp 0bp 0bp 0bp,clip]{Figures/gui_mockups_white.png}
-\caption{AetherFlow GUI mockups with high detail -- (A) Visual Studio Code developer add-on and (B) Enterprise telemetry and admin screen.}
+\caption{AetherFlow GUI mockups: (A) developer client and (B) admin dashboard.}
 \label{fig:gui_mockups}
 \end{figure}
 
 \subsection{Developer Client Interface (VS Code Extension)}
-The VS Code extension shown in Figure~\ref{fig:gui_mockups}A is designed to
-streamline routine code-assistance workflows.
+The AetherFlow VS Code extension, as depicted in Fig.~\ref{fig:gui_mockups}A,
+enables a more convenient workflow for code assistance tasks.
 \begin{enumerate}
-    \item Context menu actions -- The developer highlights a code selection, opens the context menu, and executes an available command.
+    \item Context menu actions -- The user selects the code snippet, opens the
+            context menu, and executes one of the available commands.
     \begin{enumerate}
-        \item \textit{``AetherFlow -- Explain Code''}
-        \item \textit{``AetherFlow -- Refactor Code''}
-        \item \textit{``AetherFlow -- Generate Tests''}
+        \item ``AetherFlow -- Explain Code''
+        \item ``AetherFlow -- Refactor Code''
+        \item ``AetherFlow -- Generate Tests''
     \end{enumerate}
-    These interactions implement Use Case UC-01.
-    \item Sidebar panel -- The client presents responses inside a dedicated markdown webview with formatted syntax-highlighted code blocks and concise contextual summaries.
-    \item Split view -- For code refactoring workflows, the interface displays the original source alongside suggested modifications, allowing the developer to inspect diffs prior to accepting changes.
-    \item Status bar badge -- Following each completion, the status bar displays diagnostic telemetry, such as execution provenance, token savings, and round-trip latency. Placeholder values are flagged when offline or simulated.
+    This behavior satisfies Use Case UC-01.
+    \item Sidebar pane -- The output generated is displayed in a markdown
+            webview within the sidebar, where code snippets are syntactically highlighted.
+    \item Split pane -- In the context of code refactoring tasks, the output
+            contains a diff between the original code and modified code.
+    \item Status bar badge -- After completion of each task, the execution information
+            like the provenance, number of tokens saved and latency are displayed on the
+            status bar. Dummy values are displayed when working without the network or
+            when working in simulation mode.
 \end{enumerate}
 
 \subsection{Enterprise Administrator Interface (Telemetry Dashboard)}
-The dashboard shown in Figure~\ref{fig:gui_mockups}B provides an administrative
-console for real-time gateway monitoring and policy control.
+This dashboard in Figure~\ref{fig:gui_mockups}B acts as an administrative console for real-time gateway monitoring and policy management.
 \begin{enumerate}
-    \item Group status panels -- Display service health, resident memory allocations, and response latencies across PostgreSQL, Qdrant, on-premise inference engines, and external provider endpoints.
-    \item Throughput gauges -- Monitor incoming request rates, active streaming channels, and gateway routing overhead.
-    \item Routing chart -- Plot the distribution of responses resolved via semantic caching, local inference models, and external cloud providers.
-    \item Policy weight sliders -- Enable authorized administrators to tune quality ($w_q$), cost ($w_c$), and latency ($w_l$) routing weights under policy validation constraints for Use Case UC-04.
-    \item Audit log -- Display authorized event metadata including timestamps, client identifiers, privacy classifications, routing targets, and latency. Plaintext prompts, credentials, and vault mappings are strictly excluded.
+    \item Group status blocks -- Show the current health, resident memory usage, and latency of services like PostgreSQL, Qdrant, on-premise inference engines, and remote cloud-based endpoints.
+    \item Throughput meters -- Track request rate, streaming connections, and routing overhead.
+    \item Routing graph -- Illustrate the breakdown of responses obtained using semantic caching, local inference models, and remote cloud providers.
+    \item Policy weight sliders -- Allow administrators to adjust the quality ($w_q$), cost ($w_c$), and latency ($w_l$) weights of routing according to policy validation constraints for Use Case UC-04.
+    \item Audit logging -- Show authorized events including timestamps, client identifier, privacy category, routing target, and latency. Plaintext prompts, credentials, and vault mappings are not included in logging.
 \end{enumerate}
 
 \subsection{Low-Fidelity Prototyping Wireframes}
-The initial interface sketches shown in Figure~\ref{fig:lowfi_wireframes} illustrate early layout concepts -- part (a) shows the developer extension wireframe, and part (b) shows the telemetry dashboard wireframe. These layouts articulate the visual design without implying that corresponding backend integrations are operational.
+The low-fi sketches presented in Figure~\ref{fig:lowfi_wireframes} depict some early visual layout ideas, which include (a) the developer extension wireframe and (b) the telemetry dashboard wireframe. The visual layouts depicted here convey the intended look-and-feel but do not imply that the necessary backend integrations are functional yet.
 
 \begin{figure}[!htbp]
 \centering
@@ -967,58 +963,53 @@ The initial interface sketches shown in Figure~\ref{fig:lowfi_wireframes} illust
     \includegraphics[width=\linewidth]{Figures/low_fi_dashboard.jpg}
     \caption*{(b) Telemetry Dashboard Wireframe}
 \end{minipage}
-\caption{AetherFlow low fidelity prototype layouts -- (a) Visual Studio Code developer client extension and (b) Enterprise telemetry and policy dashboard.}
+\caption{AetherFlow developer extension and dashboard wireframes.}
 \label{fig:lowfi_wireframes}
 \end{figure}
 
 \subsection{Implemented VS Code Extension Prototype}
-The working AetherFlow Assistant client prototype is shown in Figure~\ref{fig:vscode_prototype}. Static analysis of its TypeScript codebase confirms commands for Explain, Fix, Refactor, and Generate Tests within the webview chat interface. The client includes an offline mock mode and transmits JSON payloads to the \texttt{/chat} endpoint, using fallback metadata when upstream diagnostics are absent.
+The functional AetherFlow Assistant client prototype is depicted in Figure~\ref{fig:vscode_prototype}. The static analysis of its TypeScript codebase reveals commands for Explain, Fix, Refactor, and Generate Tests in the webview chat interface. The client has an offline mock mode and sends JSON payloads to the \texttt{/chat} endpoint, using fallback metadata when no diagnostics come from the upstream.
 
-The evaluated codebase does not yet implement Server-Sent Events (SSE) streaming, cryptographic authentication, Privacy Analyzer integration, the secure vault, or live database connectivity. The client will require protocol updates to support the target \texttt{/v1/chat/completions} contract. Figure~\ref{fig:vscode_prototype} documents client interface progress exclusively; mock provider tags represent development placeholders rather than final deployment configurations.
+The analyzed codebase currently lacks SSE streaming, cryptographic authentication, integration with Privacy Analyzer, the secure vault, and live database connection. The client will need protocol changes to meet the target \texttt{/v1/chat/completions} contract. Figure~\ref{fig:vscode_prototype} describes the client interface development only; the mock provider labels are development markers, not deployment ones.
 
 \section{Database Design}
 \label{sec:database-design}
-The persistence architecture completely bifurcates PostgreSQL relational records from Qdrant vector collections. PostgreSQL serves as the authoritative source for clients, policy versions, model configurations, request states, cache records, and audit metadata. Qdrant provides approximate nearest-neighbor vector retrieval for embeddings generated from approved plain requests. Because no production database was deployed at the time of writing, this documentation specifies the planned schema rather than an active database.
+This persistence architecture completely splits PostgreSQL relational data and Qdrant vector data from each other. The PostgreSQL database will be responsible for holding the data about the client, the version of the policy, model configurations, request status, cache and audit meta data. Qdrant will do approximate nearest neighbor search for vectors generated using the appropriate plain request. Since there is no production database in place at the moment, this documentation defines the intended database schema.
 
-A PostgreSQL cache record and its corresponding Qdrant point share an identical UUID. The gateway maintains this link at the application layer because foreign keys cannot cross database systems. Qdrant vector proximity alone never authorizes response delivery; the gateway must verify tenant ownership, policy compatibility, cache readiness, and TTL validity in PostgreSQL prior to returning cached output. Ephemeral placeholder mappings remain secured within an isolated volatile vault, completely separated from relational and vector stores.
+PostgreSQL cache entry and corresponding Qdrant point share exactly the same UUID. The gateway will keep the connection between these data objects on the application level, since there is no possibility to have cross-database foreign key references. Qdrant vector similarity by itself will not allow returning a response; it needs the gateway to verify that the user owns the data, policies match, cache is available and TTL value is correct according to the PostgreSQL database data.
 
 \begin{figure}[H]
 \centering
 \includegraphics[width=\textwidth,height=0.52\textheight]{Figures/vscode_assistant_prototype.png}
-\caption{Prototype for the AetherFlow Assistant VS Code extension -- Chat interface with code-aware actions and gateway connectivity indicator.}
+\caption{AetherFlow Assistant prototype in VS Code.}
 \label{fig:vscode_prototype}
 \end{figure}
 
 \subsection{ER Diagram}
 \label{subsec:er-diagram}
-AetherFlow's relational data tier is illustrated in conventional Chen notation in Figure~\ref{fig:er_diagram}. Rectangles denote entities, ellipses denote conceptual attributes, and underlined labels indicate primary keys. Diamonds represent relationships with explicit cardinality ratios ($1\text{ to }1$, $1\text{ to }N$). Foreign keys are omitted from the conceptual diagram for readability and are fully documented in the data dictionary in Section~\ref{subsec:data-dictionary}.
+The data relationship structure for AetherFlow is depicted using standard Chen notation in Figure~\ref{fig:er_diagram}. Rectangles are entities, ellipses are conceptual attributes, and underlined names are primary keys. Diamonds symbolize relations that have a defined cardinality ratio ($1\text{ to }1$, $1\text{ to }N$). Foreign keys are not shown in this conceptual diagram for the sake of clarity and can be found in the data dictionary in Section~\ref{subsec:data-dictionary}.
 
 \begin{figure}[p]
 \centering
 \includegraphics[width=\textwidth,height=0.92\textheight,keepaspectratio]{Figures/er_postgresql.pdf}
-\caption{Proposed Chen-notation Entity-Relationship (ER) diagram for AetherFlow.}
+\caption{Chen-notation ER diagram proposed for AetherFlow.}
 \label{fig:er_diagram}
 \end{figure}
 
-The conceptual relational schema consists of six operational entities and seven relationships.
+The relational schema comprises of six operational entities and seven relationships.
 \begin{enumerate}
-    \item POLICY governs CLIENT ($1\text{ to }0..N$) A policy version governs zero or more authenticated clients within a tenant. Each client references exactly one active policy version.
-    \item CLIENT submits QUERY ($1\text{ to }0..N$) An authenticated client submits zero or more queries during its operational lifecycle.
-    \item POLICY applies to QUERY ($1\text{ to }0..N$) A policy version applies to zero or more queries. Each query records the exact policy version under which it was admitted to guarantee auditability.
-    \item MODEL handles QUERY ($0..1\text{ to }0..N$) An approved local or external model handles zero or more queries. A query references zero or one final model, as cache hits and early rejections terminate prior to model dispatch.
-    \item QUERY returns CACHE ($1\text{ to }0..1$) A query completing direct inference produces zero or one verified cache record, with the cache entry linking back to its generating query.
-    \item QUERY reuses CACHE ($0..1\text{ to }0..N$) A query reuses zero or one existing cache record. A single cache record may serve multiple subsequent queries when verification checks pass.
-    \item QUERY generates AUDIT\_LOG ($0..1\text{ to }0..N$) A query generates zero or more append-only audit events capturing permitted screening and routing metadata. Administrative events record an actor reference with a null query identifier.
+    \item The relationship between POLICY and CLIENT is $1\text{ to }0..N$. One version of the policy governs zero or more authenticated clients in a tenant. Each client authenticates to exactly one active policy version.
+    \item The relationship between CLIENT and QUERY is $1\text{ to }0..N$. An authenticated client generates zero or more queries during the operation cycle.
+    \item The relationship between POLICY and QUERY is $1\text{ to }0..N$. One policy version is applied to zero or more queries. The policy version under which each query was admitted is recorded to ensure auditability.
+    \item The relationship between MODEL and QUERY is $0..1\text{ to }0..N$. Approved local or remote models operate on zero or more queries. Each query has zero or one final model, because cache hits and early rejection occur before the model gets executed.
+    \item The relationship between QUERY and CACHE is $1\text{ to }0..1$. One query completing direct inference results in zero or one verified cache record, with cache referencing back to the originating query.
+\item QUERY utilizes CACHE ($0..1\text{ to }0..N$) The reuse of a query is limited to zero or one existing cache record. One single cache record can satisfy more than one queries if verification succeeds.
+    \item QUERY produces AUDIT\_LOG ($0..1\text{ to }0..N$) A query produces zero or more audit records. These records contain metadata about the screening and routing which are allowed to occur. Administrative actions have a reference to actor and a null query identifier.
 \end{enumerate}
 
 \subsection{Data Dictionary}
 \label{subsec:data-dictionary}
-Table~\ref{tab:data_dict_table} describes the six proposed PostgreSQL
-entities. It lists the column names, PostgreSQL-compatible data types,
-integrity constraints, and intended purpose of each field. The constraints
-include primary keys, foreign keys, uniqueness, required values, checks, and
-defaults. This dictionary documents the planned relational design; it is not a
-record of an already deployed schema.
+Table \ref{tab:data_dict_table} gives information about the six entities that have been suggested for PostgreSQL. The table contains the names of the columns, PostgreSQL compatible data type, integrity constraints and use of each of the fields. Constraints include primary key, foreign key, unique, NOT NULL, check and default constraint.
 
 
 \begingroup
@@ -1114,28 +1105,28 @@ record of an already deployed schema.
 \end{longtable}
 \endgroup
 
-\noindent\textbf{Relational integrity and quota accounting.}
-Each policy version is immutable and unique across tenant, department, and version identifiers. When a new policy is published, subsequent requests adopt the new version while in-flight requests retain the policy assigned at admission. Reassigning a client across departments requires an explicit administrative operation.
+\noindent Relational integrity and quota accounting.
+There is no ability to delete or modify a policy—it is immutable and unique for each tenant, department, and policy version identifier. Any request made in flight will continue to use the policy that was assigned at admission time; if a new policy is published, then future requests will use the new version. The only operation that moves a client from one department to another is an explicit operation made by an administrator.
 
-A completed request references either a selected model identifier or a reused cache identifier, never both. Failed or rejected requests retain neither. The uniqueness of \texttt{CACHE.source\_query\_id} guarantees that direct inference yields at most one cache record. Multi-row consistency rules are enforced via atomic database transactions and application-level verification. PostgreSQL remains authoritative for cache readiness, tenant scope, and expiration. Audit logs bind to tenant and client identifiers, with administrative actions recording an actor identity and a null query identifier.
+A completed request refers to a selected model identifier or a reused cache identifier, but not both. Neither are the failed or rejected requests kept. Direct inference will return at most one cache record, thanks to the uniqueness of \texttt{CACHE.source\_query\_id} which allows to identify it. They are enforced using atomic database transactions, and application-level verification. PostgreSQL is the authoritative solution for cache readiness, tenant scope and expiration. Audit logs are associated to tenant and client identifiers: Administrative actions are recorded with an actor identity and a null query identity.
+Instead of storing its own attempt table, the baseline architecture maintains at most two execution attempt summaries, within \texttt{QUERY.attempts}. The application validates JSON attempt structures: embedded identifiers are not database foreign keys. Conducted through transaction locks in the tenant and department scope, token and expenditure quotas are available and usage is correlated to the UTC date of admission.
+Admission transactions reserve bounded token and spending allocations before they are dispatched to the outside. Reconciliation removes these reservations from the list, and any reservations that are not reconciled remain in the list until they are. Active reservations are not released when the client disconnects. Lookups of client/timestamp, policy/timestamp, cache state/expiry, source query and audit tenant/timestamp are optimized through strategic indexes.
 
-The baseline architecture records at most two execution attempt summaries within \texttt{QUERY.attempts} rather than maintaining a separate attempt table. The application validates JSON attempt structures, as embedded identifiers are not database foreign keys. Token and expenditure quotas are enforced via transaction locks within the tenant and department scope, with usage mapped to the UTC date of admission.
+\noindent Encrypted storage and retention of map data.
+The cryptographic vault acts as an isolated, volatile storage facility that is active only during the course of a request session. The vault envelope includes an opaque mapping identifier, tenant, client, request identifiers, policy version, expiry, algorithm tag, 96-bit nonce, 128-bit authentication tag, and encrypted key handle wrapper. The mappings are stored in their enciphered form using AES-256-GCM. Plaintext keys or mappings are never stored in PostgreSQL, Qdrant, or application logs; if the mapping or key handle is lost, unmasking will fail close right away. All mappings will have a maximum TTL value of 5 minutes and be bound by the deadline of the request.
 
-Admission transactions reserve bounded token and spending allocations prior to external dispatch. Reconciliation replaces these reservations with actual usage upon receiving provider metrics; unconfirmed reservations are held until reconciled. Worker restarts do not release active reservations upon client disconnection. Strategic indexes optimize lookups on client/timestamp, policy/timestamp, cache state/expiry, source query, and audit tenant/timestamp.
+For the verified cache records, the default TTL value is 24 hours. On TTL expiration or revocation, the response text is erased, along with the Qdrant vector. The smallest PostgreSQL tombstone maintains record history for the original cache identifiers. The audit data is retained for up to 30 days within the organizational policy. Purging of all data happens in a consistent dependency order. Application role permissions allow none of altering or deleting audit records.
 
-\noindent\textbf{Encrypted storage and retention of map data.}
-The cryptographic vault operates as an isolated, volatile store active solely for the duration of a request. Its data envelope encapsulates an opaque mapping identifier, tenant, client, query identifiers, policy version, expiry timestamp, algorithm tag, 96-bit nonce, 128-bit authentication tag, and wrapped key handle. Mapping records remain encrypted with AES-256-GCM; plaintext keys and mappings are never written to PostgreSQL, Qdrant, or system logs. If a mapping or key handle is lost, unmasking fails closed immediately. Mappings have a maximum TTL of 5 minutes, bounded by the request deadline.
-
-Verified cache records have an initial TTL of 24 hours. Upon expiration or revocation, response text is purged and the associated Qdrant vector is deleted. A minimal PostgreSQL tombstone preserves the historical cache identifier for audit consistency. Audit metadata persists for up to 30 days under organizational retention policies, with purges executed in strict dependency order. Application roles cannot modify or delete audit rows; scheduled retention jobs handle automated expirations.
-
-\noindent\textbf{Qdrant collection schema (non-relational).}
-The versioned vector collection \texttt{aetherflow\_cache\_v1} indexes 384-dimensional embeddings using cosine distance \cite{ref:MiniLM,ref:Qdrant}. Table~\ref{tab:qdrant_dict_table} details point fields and payload keys, which do not define foreign keys. Payload indexes support filtering on client, tenant, policy, and context scope alongside range filters on expiration timestamps. Changing the embedding checkpoint, tokenizer, or dimensionality requires creating a new collection; vectors from differing models cannot be compared directly.
+\noindent Qdrant collection schema (non-relational).
+The versioned vector collection \texttt{aetherflow\_cache\_v1} uses 384-dimensional embeddings based on the cosine distance \cite{ref:MiniLM,ref:Qdrant}. Point fields and payload keys are presented in Table~\ref{tab:qdrant_dict_table}, but no foreign keys are defined. Filtering is possible on client, tenant, policy, and context scopes, as well as for expiration timestamps by range filters. If any changes to the embedding checkpoint, tokenizer, or vector dimensions are needed, a new collection should be created.
 
 \begin{table}[H]
 \centering
 \small
 \setlength{\tabcolsep}{4pt}
 \renewcommand{\arraystretch}{1.12}
+\caption{Suggested Qdrant vector indexing point and payload schema.}
+\label{tab:qdrant_dict_table}
 \begin{tabular}{|P{3.8cm}|P{2.4cm}|P{8.0cm}|}
 \hline
 \textbf{Field / Payload Key} & \textbf{Data Type} & \textbf{Purpose and Retrieval Constraints} \\ \hline
@@ -1149,40 +1140,39 @@ The versioned vector collection \texttt{aetherflow\_cache\_v1} indexes 384-dimen
 \texttt{payload.context\_hash} & String & Fingerprint of the context, model revision, and response-schema revision. \\ \hline
 \texttt{payload.expires\_at} & Integer (Unix) & UTC expiry time used by the range filter before authoritative verification. \\ \hline
 \end{tabular}
-\caption{Proposed Qdrant vector collection point and payload schema.}
-\label{tab:qdrant_dict_table}
+
 \end{table}
 
-Cache publication follows a recoverable multi-stage workflow rather than a distributed atomic transaction. The gateway records a pending PostgreSQL entry, performs an idempotent Qdrant upsert, and marks the cache ready only after vector storage is acknowledged. Pending entries are never served to clients, and reconciliation jobs clean up partial writes.
-
-During cache lookup, the application filters candidates in Qdrant by tenant and expiration, evaluates semantic similarity gates, and rechecks PostgreSQL for ownership, readiness, and context compatibility before delivery. The PostgreSQL response text is authoritative. Stale vectors, missing rows, context mismatches, or store timeouts trigger a cache miss. Updating PostgreSQL prior to deleting revoked vectors prevents delayed vector purges from authorizing invalid reuse. Sensitive mappings, credentials, and unmasked tokens are never stored in cache tiers.
+Cache publications happen via a recoverable multi-step workflow process rather than being distributed atomic transactions. The gateway registers a pending PostgreSQL record, executes a stateless idempotent Qdrant upsert, and marks the cache as ready only once the vectors have been successfully stored. Pending records are not accessible by clients, and reconciliation processes clean up incomplete write processes.
+For cache lookups, the application filters candidates in Qdrant based on tenant and expiry date, applies semantic similarity filters, and verifies the PostgreSQL record for ownership, readiness, and compatible contexts. The PostgreSQL record's text content is canonical. A stale vector, missing records, incompatible contexts, or timeouts on the store cause a cache miss. Updating the PostgreSQL record prior to removing revoked vectors stops delayed removals of vectors from granting access permissions to invalid usage. Mappings of sensitive nature, passwords, and unprotected tokens are not cached.
 
 \section{Risk Analysis}
 \label{sec:risk-analysis}
-The risk ratings in Table~\ref{tab:risk_analysis} represent qualitative planning evaluations rather than empirical probability measurements, weighing event likelihood against potential operational impact. Proposed mitigations reflect architectural controls requiring implementation and verification, with noted limitations representing unavoidable residual risks.
+The risk levels in Table~\ref{tab:risk_analysis} are qualitative evaluations of planning risks, not empirical probabilities, taking into account the likelihood of occurrence of an event and the impact on operations. The mitigation strategies are those that are architectural, and have to be implemented.
 \begingroup\small\setlength{\tabcolsep}{4pt}
 \begin{longtable}{|P{3.1cm}|P{1.1cm}|P{1.2cm}|P{8.8cm}|}
 \caption{Technical, operational, and security risks}\label{tab:risk_analysis}\\\hline
 \textbf{Risk} & \textbf{Likeli-hood} & \textbf{Impact} & \textbf{Mitigation and residual limitation}\\\hline\endfirsthead
 \hline\textbf{Risk} & \textbf{Likeli-hood} & \textbf{Impact} & \textbf{Mitigation and residual limitation}\\\hline\endhead
-TR-01 Missed secret or confidential context & Med & Critical & Combine local entity recognition, pattern matching, checksums, project labels, and restrictive defaults. Measure false negatives across entity classes. Unrecognized sensitive context remains a residual risk, as encryption cannot protect unidentified values.\\\hline
-TR-02 Incorrect masking or restoration & Med & High & Deterministically resolve overlapping entity spans, apply opaque request-scoped placeholders, validate transformed payloads, authenticate vault envelopes, and buffer masked streams. Reject unknown tokens and scope mismatches.\\\hline
-SR-01 Vault key or process compromise & Med & Critical & Leverage protected local secret managers, isolate vault process privileges, restrict mapping lifetimes, exclude keys from core dumps and logs, and enforce key rotation. Cryptographic algorithms cannot protect plaintext from compromised processes with authorized memory access.\\\hline
-SR-02 Cross-tenant response exposure & Med & Critical & Derive scope exclusively from authenticated identities, enforce tenant filters during vector retrieval, verify PostgreSQL ownership, and restrict initial reuse to the same client. Benchmark against forged tokens and stale permissions.\\\hline
-SR-03 Cache poisoning or stale reuse & Med & High & Cache only successful plain completions, fingerprint prompt contexts and model revisions, enforce expiration TTLs, and immediately revoke tainted entries. Semantic similarity does not guarantee answer correctness; false reuse rates must be evaluated empirically.\\\hline
-TR-03 Predictor error or drift & High & High & Partition training and evaluation splits, calibrate probabilities on held-out test data, pin model revisions, and benchmark predictors against heuristic baselines. Disqualify unsupported revisions and track routing regret.\\\hline
-OR-01 Budget overrun under concurrency & Med & High & Serialize admission transactions using tenant and department locks, pre-allocate bounded reservations, and reconcile every invocation attempt. Unknown provider cost models block deployment until strictly bounded.\\\hline
-TR-04 Provider outage or partial stream & High & Med & Enforce strict deadlines, allow at most one pre-delivery failover attempt, utilize circuit breakers, and emit explicit terminal stream errors. Re-verify privacy and budget constraints before retry, failing closed if local capacity is exhausted.\\\hline
-OR-02 Insufficient GPU or helper-model capacity & Med & High & Profile memory footprints including KV cache buffers, bound worker queues, restrict max context lengths, and apply load-shedding. Transport concurrency tests are evaluated separately from active generation capacity.\\\hline
-OR-03 Cross-store inconsistency & Med & Med & Employ pending and ready states, idempotent vector upserts, PostgreSQL-authoritative state checks, and reconciliation workers. Simulate crashes across publication stages; store outages degrade safely to cache misses.\\\hline
-SR-04 Sensitive telemetry or privileged audit changes & Med & High & Allowlist telemetry fields, sanitize exception strings, and restrict database administrative roles. Application-level append-only permissions do not equate to cryptographic tamper evidence.\\\hline
-OR-04 Unavailable historical model or benchmark contamination & High & Med & Record exact model revisions and collection timestamps, disclose unobserved evaluation samples, and avoid silent provider substitutions or unsubstantiated generalization claims.\\\hline
+TR-01 Overlooked sensitive context & Med & Critical & Utilize local entity detection, pattern matching, checksums, projects tags and restrictive defaults. Test false negative rates per entity class. Unknown sensitive context is a residual risk, since encryption does not offer protection for undetected data items.\\\hline
+TR-02 Mistaken mask/unmasking & Med & High & Deterministically overlap masks, use opaque request scoped placeholders, validate masks, authenticate vault envelops, buffer masks. Fail unknown token and mismatched scopes.\\\hline
+SR-01 Vault key or process compromise & Med & Critical & Use protected local secrets managers, isolate vault process privileges, restrict mapping lifetimes, avoid keys in core dumps and logs, rotate keys. Cryptographic algorithms are unable to protect plaintexts in case of process compromise with proper authorization access.\\\hline
+SR-02 Inter-tenant response disclosure & Med & Critical & Use identity authenticated scope derivation, apply tenant filters during vectors collection, verify PostgreSQL database ownership, limit initial reuse to single client. Check against forged tokens and stale permissions.\\\hline
+SR-03 Cache poisoning or stale reuse & Med & High & Cache only successful plain completions, fingerprint prompt and model version contexts, enforce TTL expiration, revoke poisoned caches immediately.Semantic similarity does not ensure answer accuracy, and false reuse rates should be determined empirically.\\\hline
+TR-03 Error or drift in predictor & High & High & Split training and evaluation data sets, calibrate probabilities using test set held out, fix any revisions to the model, and benchmark the predictors against heuristics. Disqualify any unsupported revisions and track routing regret.\\\hline
+OR-01 Budget overrun due to concurrency & Med & High & Serialize admissions with tenant and department locks, pre-allocate bounded reservations, and reconcile all invocation attempts. Unknown cost models for the provider prevent deployment until bounded.\\\hline
+TR-04 Failure or partial stream by the provider & High & Med & Deadlines must be strict, pre-delivery can be tried only once, use circuit breakers, and return terminal stream errors. Re-validate the privacy and budget constraints, failing closed if local capacity is exceeded.\\\hline
+OR-02 Not enough GPUs or help model capacity & Med & High & Measure the memory usage, including buffer sizes for KV cache, bound the worker queue size, limit context lengths, and shed load. The concurrency transport test is done separately from the active capacity.\\\hline
+OR-03 Cross-store inconsistency & Med & Med & Mediating state with idempotent vector upserts, authoritative PostgreSQL state checks, and reconciliation workers. Simulate failures during publication; outages reduce to a safe cache miss state.\\\hline
+SR-04 Sensitivity or privilege changes in telemetry or audits & Med & High & Use allowlist for telemetry fields, scrub error strings, and prevent access to database administrator roles. Cryptographic tamper evident append-only does not imply application-level.\\\hline
+OR-04 Historical model unavailability or contaminated benchmark & High & Med & Preserve full model revision history and collection timestamp, disclose unseen test data, and prevent provider swap or unproven generalization.\\\hline
 \end{longtable}\endgroup
-Before cloud-connected scenarios are tested, security evaluations prioritize SR-01 through SR-04 and TR-01 through TR-02. Load and cost benchmarks subsequently establish operating bounds under controlled workloads. A failure in privacy enforcement halts deployment regardless of cost or quality metrics. If a performance target is missed, measurements are retained and capacity models are adjusted explicitly.
+Before any cloud-based scenario can be validated, security assessments focus on evaluating SR-01 through SR-04 as well as TR-01 through TR-02. Next comes load and cost testing to determine operating limits based on controlled workloads. In cases where there is a failure in implementing privacy protection, no further process can move ahead, irrespective of the cost and quality considerations involved.
 
 \section{Conclusion}
 \label{sec:ch4-conclusion}
-The requirements detailed in this chapter specify the proposed four-stage gateway, six primary workflows, six relational entities, vector indexing schemas, and an isolated temporary vault. Documented assumptions clarify operational prerequisites necessary before assessing design viability. Existing client prototypes are distinguished from planned backend services to ensure that future implementation milestones and evaluation benchmarks are reported with complete fidelity.
+The requirements stated in this chapter encompass the four-tier gateways proposed, six major work-flows, six relationship entities, vector indexing scheme and an independent temporary vault. The assumption stated in documentation identifies the prerequisite of operations that need to be met prior to evaluating the feasibility of the design. The current client prototypes have been separated from the proposed backend service for accurate future reporting.
+
 
 \chapter{Proposed Approach and Methodology}
 \label{ch:methodology}
@@ -1204,7 +1194,6 @@ M_{\text{safe}}(q) = \{m \in M : P(q,m) = 0\}.
 \end{equation}
 
 Safe set contains models which can process request. There are 2 options for privacy handling on AetherFlow. Masked values are replaced with placeholders when an approved request is sent to the cloud in masking mode. Original values will be retained in the local Privacy Vault. When OperatingMode = local-only, the requests with private information are processed through local models. In both modes, all secrets and confidential requests will be kept local.
-
 Model availability, permissions, context limits, quality prediction support and available budget are also checked. The models that satisfy these conditions are kept in the feasible set, while the rest are eliminated.
 
 The response quality predictor for each model is $\hat{Q}(q,m)$ where $0 \leq \hat{Q}(q,m) \leq 1$ and the response time predictor is $L(q,m)$ in seconds. Latency is estimated based on the previous requests from the moving average of the previous requests with the proposed smoothing factor of 0.2. The first token is not counted as part of the time for the second token.
@@ -1226,7 +1215,6 @@ n_{\text{ctx}}(\bar{q},m)p_{\text{ctx}}(m)
 \end{equation}
 
 In this case, $n_{\text{in}}$ and $\hat{n}_{\text{out}}$ are the number of input tokens and the number of estimated output tokens, respectively. The price for the in and out are $p_{\text{in}}$ and $p_{\text{out}}$ respectively. $B_m$ is the number of tokens that are included in one pricing unit (when the provider provides it!
-
 The dataset does not currently feature counts of the context tokens and counts of the internal processing tokens, and the counts are set to zero. The estimated number of output tokens is made based on previous requests and the maximum output limit. The system proposed is based on prices per 1000 tokens, meaning that $B_m = 1000$. Local models are hardware intensive, but do not incur external API fees.
 
 Cost and latency are normalized using the equation below to values between 0 and 1 because they are measured using different units as quality.
@@ -1244,7 +1232,6 @@ Cost and latency are normalized using the equation below to values between 0 and
 \end{equation}
 
 Here, $x$ represents cost or latency. The values $x_{\min}$ and $x_{\max}$ are fixed limits defined in the routing policy, while $\varepsilon_x$ is a small positive tolerance. These limits are selected using initial performance measurements and approved by the administrator.
-
 The limits remain the same while comparing models. Invalid limits are rejected, and values outside the range are kept between 0 and 1. This allows cost and latency to be compared fairly without changing the scale for each request.
 
 The routing approach assumes that predicted quality, estimated cost, and latency are available for the supported models. Actual output tokens and response time may differ from their estimates. The gateway checks privacy and other restrictions before making the final selection.
@@ -1275,7 +1262,6 @@ m^* =
 \end{equation}
 
 If there are two models with equal utility, then the one with a lower cost is selected, otherwise – the one with a smaller identifier. Negative value of the utility does not mean that a particular model cannot be applied but only that penalties for cost and latency are larger than the quality value.
-
 The models that have missing or invalid quality predictions are not chosen. Safe values may be used for the cost and latency as they can be set by the administrator. In case none of the models meets the necessary criteria, an error is reported.
 
 \section{Privacy Screening and Data Masking}
@@ -1302,7 +1288,6 @@ Validation could help to eliminate accidental matches for such formats.
 Some information has no PII in it but still requires special handling.
 They include confidential project labels, file level scopes, and administrator level restrictions.
 Additional rules are necessary for this type of information.
-
 Sometimes two detection results can overlap.
 The system will solve the overlap issue before doing any replacements.
 Sometimes there is an overlap between restricted span and maskable span.
@@ -1449,7 +1434,6 @@ Candidates are tested based on descending verifier score.
 In case of identical scores, the cache ID determines the ranking.
 When none of the candidates satisfies all the requirements, inference will proceed as usual.
 Semantic reuse is unavailable until the verifier threshold is validated.
-
 Consider the two following prompts: ``Write code that encrypts a file using the supplied key'' and ``Write code that decrypts a file using the supplied key.''
 They have some words and a similar topic.
 However, a code that encrypts a file cannot be a code that decrypts the file.
@@ -1487,7 +1471,6 @@ The TTL value is a max life span of a key.
 Usage stats are purely telemetry data.
 They do not guarantee the correctness of the answer.
 Request repetition does not mean the answer is true.
-
 Candidates are published to PostgreSQL via pending and ready states.
 Candidates are selected from Qdrant.
 The response is given only when there is a final read.
@@ -1524,7 +1507,6 @@ MBPP is optional data for code training \cite{ref:MBPP}.
 MBPP is never to be used to boost the HumanEval score.
 Synthetic corporate instances test formatting and policy.
 They are not part of the benchmark report.
-
 The collector uses consistent generation parameters per each combination of prompt and model.
 The raw response is stored in the evaluation collection with access permissions.
 It is not stored in the production audit log.
@@ -1550,7 +1532,6 @@ It does not have credentials, Internet access, or production filesystem.
 It has time and resource limits.
 MT-Bench judge scores $s\in[1,10]$ are normalized as $(s-1)/9$.
 We note the judge model, the rubric, the turn handling, and the parsing rules.
-
 All of the above metrics use the same number range.
 But they do not mean the same.
 Correctness of multiple-choice answer is not the same as passing unit tests.
@@ -1632,7 +1613,6 @@ In case there is enough sample size, bounded isotonic regression may be used.
 Binary outcomes are calibrated using Brier score and reliability bins.
 Continuous judges are calibrated using the mean absolute error and root mean square error.
 Rank correlation and routing regret measures are used in order to determine if small prediction errors can lead to an incorrect backend choice. All results are obtained independently for every task, model, and privacy representation.
-
 In the initial training stage, learning rates of 1e-5, 2e-5, and 5e-5 are used. The batch size is chosen based on the memory limitations. Training is carried out for up to ten epochs depending on the validation error. The above numbers are suggested as the search space and not examples of the successful ones. There is documentation needed for some parameters, such as random seeds, tokenizer version, and sequence length. Moreover, additional parameters include pooling type, head settings, loss weights, and checkpoint hashes. The evaluation process suggests at least three training runs with different seeds if there are enough resources. All limitations need to be stated explicitly.
 
 The checkpoint is considered to be strong when used in combination with the model architecture and decoding settings that were used for training its heads. Different provider aliases, quantization, system prompts can influence the quality. Therefore, every update of the registry requires coverage assessment and labeling or re-training may be necessary. Exportation to ONNX is allowed only after the quality scores are evaluated on a static test set and should conform to the original model. Some predictions might be non-finite, and there might be cases when the model is unable to load or some heads are not supported. In such case, the score will never be substituted with the imaginary one. If no options are available, the learned selector will raise the exception.
@@ -1643,35 +1623,35 @@ The checkpoint is considered to be strong when used in combination with the mode
 On a cache miss, the policy engine fetches the allowed version of the request and the fixed privacy classification. The registry of registered endpoints is then filtered. The filtering process checks for deployment permission and tenant permission, as well as health, capability, predictor coverage, and estimate validity. The expected API cost is calculated using the fully serialized input, and an estimate of the output length is provided by the model. Latencies are estimated using finished requests and are averaged per model and length bucket as long as there are enough samples. In case of not having enough samples or too old samples, the safe value configured by the system is used. Latency estimates are split into first-token latency and total latency. In this report, the utility is defined as the estimated total completion time of the backend.
 
 In Eq. ref{eq:token-cost}, the expected cost is a preference and not a guarantee of the cost. The admission phase ensures a reserve of the upper bound cost, which is calculated using the maximum output length enforced and includes all billable categories, such as reasoning and cached input. A backend without the upper-bound cost reserve is constrained by the hard limit. The admission phase of token reservation at department and client level is done safely, as is the case with local inference. If the budget of cloud-USD is spent, the local models might still be available. On the other hand, if the tokens are exhausted, the local models may also not be available.
-
 The transaction protocol defined in Section \ref{sec:database-design} dictates the order in which competing admissions take place. This happens for both workers and policies. A model with the higher rank can only be admitted after the reservation transaction is completed. In some cases, other requests might consume the budget first, forcing the engine to reconsider its feasibility. Hence, the next possible model will be admitted without needing the help of any external provider. This represents a re-admission process rather than a recovery one. Unresolved attempts and usage records will stay in the ledger until they are resolved.
 
 There is no API cost in the local inference process for the utility. However, there are hardware, energy, and maintenance costs that are taken into account separately in the evaluation process.
 
 In a single round of ranking, model weights remain unchanged along with normalization bounds. The re-ranking process is needed in case of operational failure using the new state of health and budget together with the same policy snapshot as the original request. The only exception to the above-mentioned process is an emergency revocation.
-
 The router does not benefit from the removal of a privacy constraint. Additionally, it cannot change a privacy constraint without notifying. The router keeps the estimates and selected utility. The auditor is able to reproduce the decision based on this information alone.
 
 \subsection{Utility Calculation Example}
 Take, for instance, a simple inquiry. It comprises 1,000 tokens to process with an output of 500 tokens estimated. The highest output in this case will be 1,000 tokens. However, all the models presented above can be considered valid in other cases. Below are only the examples of the models’ names. The prices given are indicative and in USD per 1,000 tokens.
 \begin{table}[!htbp]\centering\small
+\caption{Hypothetical raw estimates and conservative output-cap charges}\label{tab:routing-raw}
 \begin{tabular}{lrrrrrr}\toprule
 Model & $p_{\rm in}$ & $p_{\rm out}$ & $C$ (USD) & $L$ (s) & $\hat Q$ & Max. API charge\\\midrule
 Qwen3-8B & 0 & 0 & 0 & 2 & 0.70 & 0\\
 Gemini & 0.002 & 0.006 & 0.005 & 1 & 0.85 & 0.008\\
 GPT & 0.004 & 0.012 & 0.010 & 5 & 0.95 & 0.016\\\bottomrule
 \end{tabular}
-\caption{Hypothetical raw estimates and conservative output-cap charges}\label{tab:routing-raw}
+
 \end{table}
 Formula \ref{eq:token-cost} defines the token cost for Gemini as follows: (1000 × 0.002 + 500 × 0.006) / 1000 = 0.005 USD. The reserved amount equals 0.008 USD under the condition of the maximum output capacity of 1,000 tokens. Likewise, the expected cost of GPT equals 0.010 USD, with the maximum possible cost being 0.016 USD.
 \begin{table}[!htbp]\centering\small
+\caption{Normalized estimates and correctly calculated utilities}\label{tab:routing-utility}
 \begin{tabular}{lrrrr}\toprule
 Model & $\hat Q$ & $\widetilde C$ & $\widetilde L$ & $U$\\\midrule
 Qwen3-8B & 0.70 & 0.00 & 0.40 & 0.270\\
 Gemini & 0.85 & 0.50 & 0.20 & 0.235\\
 GPT & 0.95 & 1.00 & 1.00 & $-0.025$\\\bottomrule
 \end{tabular}
-\caption{Normalized estimates and correctly calculated utilities}\label{tab:routing-utility}
+
 \end{table}
 The example provides an illustration of an interesting phenomenon---the model with the highest accuracy in predicting quality does not guarantee the maximum configured objective.
 
@@ -1683,7 +1663,6 @@ The sensitivity analysis shows the impact of the policy decisions on the result.
 The policy allows one extra admission. It happens before the client can see any content. It needs to stay within the shared request deadline. The assumptions regarding connection, first token, idle, and total timeouts are listed in A-11. Some failures can be retried, namely temporary connection failures, rate limits, and some server errors. Others are non-retryable, such as invalid credentials, malformed requests, screening failures, vault errors, and authorization rejections. Retries use bounded backoff with random jitter and happen only if there is enough time left before the deadline. The suggested backoff range is 250–1,000 ms, and it needs to be tuned under load.
 
 Before recovery, the gateway performs several checks. They include the first classification and the authorized payload digest, as well as endpoint revocation, endpoint health, and predictor coverage. Also, it checks the context capacity and the budget. Another payload requires a new screening procedure. A potentially compromised model can be excluded from ranking. Only if another local or cloud endpoint meets all requirements can it be used. The restricted request stays local no matter how many times it is retried. When the only local endpoint fails, the system gives up availability to protect privacy.
-
 A timed-out call can still use tokens, with its reservation still open. The new attempt needs a new admission. The gateway uses the provider request ID and the usage information available. It does not expect that an idempotency key will prevent duplicate billing. The circuit breaker kicks in after three temporary failures and a 30-second wait. After that, one half-open call is allowed. This health policy is only recommended and not a general provider characteristic. Health status is never more important than privacy eligibility.
 
 Upon sending of the output content, automatic recovery stops.
@@ -1795,7 +1774,6 @@ The development baseline is 16\,GiB of host memory, while 32\,GiB is
 recommended when there are multiple services running at once or local-model experiments are performed.
 There is no need for a dedicated GPU in the current prototype. In case of local models, the
 evaluation should give the actual hardware and memory limits, along with the model's execution configuration.
-
 All compared routers use the same set of allowed models.
 Also, they use the same I/O capacity, generation parameters, privacy policy, and cost snapshot.
 The primary routing experiment disables semantic reuse.
@@ -1825,7 +1803,6 @@ The post-generation cascade can be a baseline.
 However, all additional queries have to be accounted for.
 Fixed models provide an explicit error if they are prohibited or not available.
 In any case, they cannot ignore the privacy constraints of AetherFlow.
-
 The offline oracle has label information.
 It chooses the optimal model among the feasible models using the same utility function.
 It provides an upper bound on a backward look and a regret value for routing.
@@ -2010,7 +1987,7 @@ System design is based on the principles that make AetherFlow easier to develop,
 
 The AetherFlow system comprises distinct modules that interact via specified interfaces. Every module carries out its own function without being highly dependent on the code of other modules. For instance, the quality predictor generates scores from the models, and the policy engine uses the generated scores to route traffic. This design makes it possible to test and revise a single module without altering the whole system. It also simplifies the process of debugging since any issue can be pinpointed to a particular module carrying out a specific function.
 
-\subsubsection{Non-blocking Asynchronous I/O}
+\subsubsection{Non-Blocking Asynchronous I/O}
 
 The gateway is designed to use asynchronous processing of requests. Some requests require waiting for external services, like cloud API calls or database queries. During this period, the gateway can process other requests, rather than blocking them. This approach is supported by FastAPI. More complicated tasks, such as local model inference, should be performed separately. This feature is useful in cases when several clients are working with the gateway simultaneously.
 
@@ -2029,13 +2006,11 @@ The gateway's goal is to make the experience easier for its users. If a request 
 \subsection{Development Techniques}
 
 AetherFlow uses the component development method. Each key component is designed and tested separately and then integrated with the rest of the gateway. It encompasses privacy screening, semantic caching, quality estimation, model routing and the APIs to support it. Once each module has been tested, there will be integration tests to see if requests are getting through the system correctly.
-
 Version control and team collaboration is done with Git and GitHub. The extension is the reference client that can be used to show the project. This current mock workflow is used to test the workflow in the initial stages, and once the gateway is finished, it will be tested with real model responses and benchmark datasets.
 
 \section{System Architecture}
 
 AetherFlow consists of three primary components: the client, the gateway and the LLM services. The client makes requests to the gateway which then processes the request and sends it to the chosen model. There are also a number of supporting services that connect via the gateway to check privacy, cache, and store system information.
-
 Figure~\ref{fig:system_arch} shows the proposed architecture. A dashboard provides the administrator with a place to set settings and track performance and the VS Code extension serves as the primary client. The different components are connected via the FastAPI gateway. Local models are accessed in the protected environment, cloud models are accessed via their API. Requests with restricted information stay in the local system.
 
 \begin{figure}[!p]
@@ -2049,19 +2024,17 @@ Figure~\ref{fig:system_arch} shows the proposed architecture. A dashboard provid
 \label{sec:subsystem_arch}
 
 The gateway is split into smaller subsystems which do specific jobs. The client sends requests to the FastAPI API gateway where they are processed. It also validates client access and links various elements of the system.
-
 The Privacy Analyzer analyzes requests for sensitive information. Local only processing is indicated if there is limited information available. Placeholders are used for sensitive values that are masked. They are kept in an encrypted Privacy Vault, and can be recalled once they have been authorized.
-
 The semantic cache is used to determine if a similar request has been answered in the past. The cross-encoder determines if the answer stored in Qdrant is appropriate for the request, while Qdrant looks for similar previous requests. If an acceptability answer is discovered, it is returned straight away. Otherwise, the request goes into the quality estimation phase.
-
 The quality estimator is a trained DistilDeBERTa model for predicting the performance of each supported LLM in answering the request. It generates quality scores even when the models aren't running. The policy engine then identifies a model from a set of locally and cloudly defined models using the scores and other factors such as the cost, response time and privacy rule.
 
-Once the model selection is done, the gateway forwards the request to the right model adapter. Local models can be accessed via vLLM or Ollama, and cloud models can be accessed via their API. There are two possible solutions suggested for obtaining cloud access for this system. Bring Your Own Key (BYOK) - Users furnish their own API keys. The gateway in AetherFlow Package utilizes the system's API keys. Both have the same privacy and routing rules.
-
+Once the model selection is done, the gateway forwards the request to the right model adapter. Local models can be accessed via vLLM or Ollama, and cloud models can be accessed via their API. There are two possible solutions suggested for obtaining cloud access for this system. BYOK - Users furnish their own API keys. The gateway in AetherFlow Package utilizes the system's API keys. Both have the same privacy and routing rules.
 The chosen model produces a feedback, which is sent to the client. The system also tracks the following data: model usage, cost, response time. This information can be seen by the administrator via the Dashboard and may be changed by the administrator to change routing settings.
 
 \begin{table}[!htbp]
 \centering\small
+\caption{Main subsystem interfaces and the information they exchange.}
+\label{tab:interfaces}
 \begin{tabularx}{\textwidth}{|P{3.4cm}|X|X|}\hline
 \textbf{Component / interface} & \textbf{Input} & \textbf{Output}\\\hline
 Client API & Prompt or code, request settings, API access option & Final answer or response stream\\\hline
@@ -2072,8 +2045,7 @@ Quality estimator & Request and supported model list & Predicted quality scores\
 Policy engine & Scores, privacy rules, cost, response time & Selected allowed model\\\hline
 Model adapters & Approved request and selected API key for cloud access & Model response and usage information\\\hline
 \end{tabularx}
-\caption{Main subsystem interfaces and the information they exchange.}
-\label{tab:interfaces}
+
 \end{table}
 
 \subsection{Data Flow Diagrams}
@@ -2085,28 +2057,29 @@ Data Flow Diagrams (DFDs) depict the flow of data in AetherFlow. Describe the fl
 \label{sec:dfd_level0}
 
 This Level 0 DFD depicts AetherFlow as a single system and also the communication with the outside systems. The various entities in the main entities are the developer client, enterprise administrator, local LLM service, and cloud LLM provider as illustrated in Figure~\ref{fig:dfd_level0}.
-
 The developer pushes the prompts or code using the VS Code extension or other client supported. There are two choices for cloud API access: the user can select either. In BYOK mode the user supplies their own API keys. Cloud access in AetherFlow Package option is via system-managed API keys. Access option is selected with the request settings sent to the gateway.
-
 The administrator controls the model configuration, routing policy and system settings from the dashboard. If the routing decision is made, the gateway sends a message to local or cloud models and receives the generated response from them and sends it to the client. Regardless of the API access option, requests are handled locally when they are restricted.
 
-\begin{figure}[!htbp]
-\centering
-\includegraphics[width=0.98\textwidth]{Figures/dfd_level0.pdf}
-\caption{The first (level 0) DFD diagram displays the external interfaces and two ways to access the cloud API.}
-\label{fig:dfd_level0}
-\end{figure}
+
 
 \subsubsection{Level 1 DFD - Detailed Data Flow}
 \label{sec:dfd_level1}
 
 The developer client, enterprise administrator, local LLM service, and cloud LLM provider are the four external interfaces of the Level 1 DFD. The circles indicate internal processes and the parallel-lines indicate data stores. Within the system, there are two ways of accessing it, namely, BYOK and the AetherFlow Package, and NOT additional external interfaces. The diagram explains the process of how a request is handled within the gateway. The request is initially screened on a privacy level, sensitive information is identified as shown in Figure~\ref{fig:dfd_level1}. When masking is required, sensitive values are masked and their original values are temporarily stored in the Privacy Vault.
-
 It is then sent to the semantic cache, where Qdrant will look for the previous requests that are similar. If a matching answer is stored on disk and it is determined that it is correct, then it is returned immediately. If it isn't, then the quality estimator estimates scores for the models supported. These scores in combination with cost, latency, and privacy rules are used by the policy engine to choose the model.
 
 Once the gateway has selected the model, it verifies whether it's a cloud model and then evaluates the API access option. For BYOK, it utilizes the API key saved in the user's account. For the AetherFlow Package, it employs the system managed API key. API keys are securely stored and used only when talking to the chosen cloud provider. There's a separate secure API-key store for user keys and system keys. They are not kept in the Privacy Vault, semantic cache or general request logs. When using a local model, no cloud API key is needed.
-
 The chosen model acts on the request and sends the response back to the gateway. The gateway prepares the final answer and sends it to the client. System settings and usage records are stored in PostgreSQL, Semantic cache data in Qdrant, Temporary sensitive mappings in the Privacy Vault.
+
+\begin{figure}[H]
+\centering
+\vspace*{8mm}
+\includegraphics[width=0.98\textwidth]{Figures/dfd_level0.pdf}
+\caption{Level 0 DFD showing external interfaces and cloud API access options.}
+\label{fig:dfd_level0}
+\end{figure}
+
+\clearpage
 
 \begin{figure}[!p]
 \centering
@@ -2114,6 +2087,7 @@ The chosen model acts on the request and sends the response back to the gateway.
 \caption{Level 1 DFD with the same four external interfaces as Level 0.}
 \label{fig:dfd_level1}
 \end{figure}
+\clearpage
 
 \section{Architectural Strategies}
 
@@ -2122,47 +2096,38 @@ The following section presents the key strategies adopted during the design proc
 \subsection{Asynchronous Processing}
 
 AetherFlow implements the gateway using Python with FastAPI to deal with incoming requests. The gateway works based on the asynchronous model, which means that the gateway is capable of processing other requests while waiting for the database operation or a response from cloud APIs. In the synchronous model, a single request can tie up a worker while waiting for an external service. As you can see, asynchronous processing eliminates this problem.
-
 Privacy analysis and quality prediction tasks are resource-intensive tasks that will need more CPU resources to complete. Such tasks are intended to be executed in different workers without blocking the gateway.
 
 \subsection{Modular Architecture and Model Adapters}
 
 The AetherFlow is designed in a modular way, meaning that different parts perform different functions. The gateway is responsible for connecting the components via certain interfaces. In such a way, it is possible to work on separate parts without affecting the whole system.
-
 Moreover, there are model adapters that can help communicate with various providers of the language models. Instead of implementing code for the provider directly in the gateway, adapters will be used to work with their providers separately. It was decided to use this approach due to the fact that APIs of the local and cloud models can differ.
 
 \subsection{Privacy and Local Processing}
 
 The protected local environment is employed by Aetherflow for handling the restricted requests. This choice was made because all requests forwarded to cloud providers would make the restricted data available to the external entities. The local processing allows the company to have more control over the treatment of its own confidential data.
-
 It is also possible to use masking and temporary storage of the sensitive data in the Privacy Vault. Yet, the masking does not imply the safe treatment of the request in the clouds. More computing power can be required from the local models, although it ensures privacy of the users. The preference of privacy over efficiency is ensured.
 
 \subsection{Concurrency and Resource Management}
 
 The system is expected to handle requests from several users at once. Because these requests may share resources like model capacity and budget, there must be some mechanism to handle them safely.
-
 In the suggested architecture, PostgreSQL transactions and locking mechanisms will help avoid any conflicts that may arise while updating shared records. Two requests, for instance, should not be able to use the same budget balance without verifying the updated usage. Instead of using only memory-based locking mechanisms, database transactions are used as the gateway may employ several workers.
 
 \subsection{Data Storage Strategy}
 
 AetherFlow implements different storage solutions depending on the type of data that is involved. PostgreSQL is used for storing structured data like model definitions, routing policy, and metrics. Qdrant is chosen for semantic caching since it enables finding similar queries.
-
 Choosing only the relational database for all purposes wasn’t implemented since semantic search has special needs different from regular record storage. The Privacy Vault is also separated since it stores sensitive mappings temporarily. Thus, each storage can deal with its data appropriately.
 
 \subsection{Error Handling and Recovery}
 
 It must address possible issues like unavailability of the model, failure of the API call, as well as problems in connecting to the database. It must ensure that the gateway is able to provide an appropriate error when a task is not possible to perform.
-
 In the event of a transient provider issue, it is allowed for AetherFlow to repeat the request with a model other than the one that failed. Still, the alternate model must comply with the original privacy requirement. Requests are not allowed to use cloud models just because a local one is not available.
 
 \section{Domain Model and Class Diagram}
 
 Class diagram illustrates the primary classes of AetherFlow and the relationships between them. Figure~\ref{fig:class_diagram} describes the proposed class structure of the gateway.
-
 GatewayProxy is the primary class of the gateway, which handles the incoming request. GatewayProxy creates the RequestContext object containing all data about the request, including privacy and the selected settings. Then, the gateway uses different services to process the request.
-
 PrivacyAnalyzer looks for sensitive data and calls the TokenVault when masking is needed. The SemanticCache searches for any previous answers, and the QualityEstimator predicts the quality of the response of the supported models. The ExecutionPolicyEngine uses this prediction together with the cost, latency, and privacy restrictions to choose one of the supported models. The UsageLedger verifies the availability of the budget, reserves some budget before using the model, tracks the actual consumption, and releases any unused reserve.
-
 ModelAdapter is an abstraction layer that allows working with models via the same interface. LocalModelAdapter works with local models using vLLM or Ollama, and CloudModelAdapter works with supported cloud APIs. CloudModelAdapter selects the appropriate API key: the user-specified one for BYOK or the one provided by the system for the AetherFlow Package. This structure enables various models to be used with the same gateway.
 
 \begin{figure}[!p]
@@ -2176,11 +2141,8 @@ ModelAdapter is an abstraction layer that allows working with models via the sam
 \subsection{Sequence Diagram}
 
 Sequence diagram depicts the interaction between components while processing the request. The PrivacyAnalyzer uses the TokenVault for temporary mappings. The ExecutionPolicyEngine uses the UsageLedger for budget and usage checking. Figure~\ref{fig:sequence_diagram} depicts the proposed request flow.
-
 First, the client makes a request to the gateway. The PrivacyAnalyzer detects sensitive data and applies masking if needed. Then the gateway checks the semantic cache for a valid previous answer when the caching is enabled. In case if there is a suitable answer, it is returned immediately.
-
 Otherwise, the QualityEstimator estimates quality scores for the supported models. The ExecutionPolicyEngine selects the allowed models by their quality, cost, and latency. Then the gateway sends the request to the selected model adapter and gets the generated answer.
-
 Before returning the answer, the gateway un-masks the values if it is allowed. It also writes the usage information and clears temporary sensitive mappings.
 
 \begin{figure}[!htbp]
@@ -2199,33 +2161,27 @@ This subsection highlights how AetherFlow will be coded, tested, deployed and ma
 \subsection{Conventions and Coding Guidelines}
 
 AetherFlow development is done mostly in Python for backend and TypeScript for the VS Code Extension. The code for this project has been structured in separate modules for privacy screening, semantic caching, quality estimation, model routing and API interactions.
-
 The project employs consistent naming conventions, good function names and proper error handling. Critical functions in the code have comments where necessary. Version control in the project has been done with Git/GitHub. API keys, passwords and user sensitive information are not stored in the actual source code and regular logs.
 
 \subsection{Testing Approaches}
 
 AetherFlow employs various testing techniques to ensure that the system is working correctly. Unit testing is expected to be done on the individual components such as Privacy Analyzer, semantic cache, quality predictor, and policy engine. These tests will verify whether each component produces the desired output.
-
 Integration testing will evaluate how the components work together in processing a request. It will ensure that restricted requests are processed locally and that the responses from the cache are delivered only after validation. The VS Code extension will also be tested to ensure proper communication with the gateway.
-
 The finished system will be tested with benchmark data sets such as MMLU, GSM8K, HumanEval, and MT-Bench. The tests will concentrate on the quality, cost, latency, and privacy of the responses. This testing approach was chosen because testing of the individual components cannot ensure the correct operation of the entire system.
 
 \subsection{Continuous Integration and Deployment}
 
 AetherFlow will utilize Docker Compose in order to deploy the gateway and other services needed. These include FastAPI, PostgreSQL, Qdrant, and the local model service set up in configuration. Docker Compose was chosen because it provides an easy way to manage multiple services in a development environment without setting up each service individually.
-
 For version control and collaboration, GitHub is utilized. CI workflow could be implemented through GitHub Actions which could execute some basic checks and tests on push. This could aid in catching any issues with new changes before they are merged into the repository. For now, deployment starts with the local development environment.
 
 \subsection{Error Handling and Recovery}
 
 Error handling is used by AetherFlow to handle possible errors in request processing. They include invalid requests, model unavailability, cloud API call failure, and database connection errors. The gateway provides an error message to ensure that the client understands that the request cannot be fulfilled.
-
 In case of transient model and provider failure, the gateway tries again with the help of another available model. But the new model should abide by the same privacy requirements. Requests that are restricted cannot be routed to cloud models. Retry attempts are regulated to prevent extra overheads.
 
 \subsection{Database Management}
 
 Structured data, including model configurations, policies and metrics, is stored using PostgreSQL. The embeddings and cache are stored in Qdrant for semantic similarity querying. Both databases have their own functionality and are accessed by the gateway's auxiliary services.
-
 Operations with databases will make sure the records in databases remain consistent in case there are several requests at a time. The database migrations will help to deal with table structure updates during the development. It is also possible to use the regular backup for some system records. Confidential mappings in the Privacy Vault are temporary and do not undergo backup from the database.
 
 \section{Conclusion}

@@ -1,0 +1,14 @@
+{
+  "source": "api_checks.json",
+  "included_response_ids": [
+    "registry",
+    "privacy-config",
+    "legacy",
+    "balanced",
+    "private",
+    "sensitive-balanced",
+    "keyword-positive"
+  ],
+  "scope": "Preliminary configuration, routing-selection, and keyword-screening observations. No formal pass-rate or model-performance claims.",
+  "all_reported_response_fields_checked": true
+}

@@ -1,6 +1,6 @@
 \chapter{Implementation and Test Cases}
 \label{ch:implementation}
-The implementation of FYP-I solves the problem of selection of a language model in AetherFlow with the consideration of factors such as quality, cost, latency, and privacy that influence the selection process. The implementation of research demonstrator is called OptiRoute AI and is available at \url{https://optiroute-ai-phi.vercel.app/}. The implementation includes a web interface, JSON routing API, and some preliminary benchmarking results. The provided benchmarking results have not been independently reproduced and cannot be considered verified performance results. The other part of FYP-II includes VS Code integration, semantic caching, temporary value protection, and usage logging.
+The implementation of FYP-I solves the problem of selection of a language model in AetherFlow with the consideration of factors such as quality, cost, latency, and privacy that influence the selection process. The AetherFlow routing prototype is available at \url{https://aether-flow-gamma.vercel.app/}. The implementation includes a web interface, JSON routing API, and some preliminary benchmarking results. The provided benchmarking results have not been independently reproduced and cannot be considered verified performance results. The other part of FYP-II includes VS Code integration, semantic caching, temporary value protection, and usage logging.
 
 \section{Implementation}
 
@@ -34,7 +34,7 @@ The saved model-list response dated 11 November 2026 consists of eight models: L
 There are five task types used in the prototype: Coding, Competitive Math, General Knowledge, Mathematical Reasoning, and Scientific Questionnaire. The routing response includes estimated task type, probability of the query being easy, medium, or hard, and probability of getting a correct response for each model. This information helps in selecting a model prior to sending the query to a model. Information about training and scoring adjustment procedure are included in the API documentation; however, the source code, the weights of the trained model, the dataset, and the logs have not been independently verified.
 
 \subsection{Legacy Model Selection}
-Legacy routing works on the basis of comparing the probability of the prediction of each model to answer correctly with a predetermined threshold. In the case of this experiment, the threshold value used was 0.95. This is one of the possible threshold values for this check, but it may not be the optimal threshold value. If none of the models pass the threshold value, the router falls back to the model that is considered to be the most powerful. The answer provides information on the selected model, flag, scores, and reason for the decision.
+Legacy routing compares each model's predicted chance of answering correctly with a configured confidence requirement. If no candidate meets that requirement, the service returns its configured fallback model. The response includes the selected model, the fallback flag, predicted scores, and reasons for the decision. These fields describe the prototype's selection output; they do not establish that the selected model generated a correct answer. The preliminary observations are discussed in Chapter~\ref{ch:results}.
 
 \subsection{Routing Modes}
 The second router can handle Economy, Balanced, Speed, Quality, and Private modes. The request picks the router with \texttt{router=multi\_objective}, along with a necessary mode. Economy mode pays attention to cost more. Balanced mode takes into account both cost and speed. Speed mode uses an estimate of the maximum response time. Quality mode is oriented at predicted correctness. The Private mode permits only those models which meet the privacy configuration requirements.
@@ -42,7 +42,7 @@ The second router can handle Economy, Balanced, Speed, Quality, and Private mode
 The configurations include weights for cost and response time significance. They also include scales and adjustments for measuring values in order to put various measures on the same scale and modify predicted scores. The way these values were obtained is not independently verified. Setting a quality objective does not ensure that the chosen model will have such level of accuracy. Modes described at \texttt{/api/modes} differ from the five modes at \texttt{/api/objectives}.
 
 \subsection{Privacy Rules and Sensitive Queries}
-The current configuration permits only Llama-3.1-8B-Instruct and Qwen3-8B for queries that are deemed to be sensitive. For the recorded tests, in both Private mode and Balanced with the query being sensitive, an allowed model was chosen. This holds for the tested requests; it does not mean that all queries or fallbacks will comply with the policy. There are six patterns and keywords in the filtering endpoint configuration. Some of the keywords include confidential, medical record, and proprietary. These guidelines offer a basic filtering process, but the detection rate of such policies has not been quantified.
+The current configuration permits only Llama-3.1-8B-Instruct and Qwen3-8B for queries that are deemed to be sensitive. In the preliminary experiments, in both Private mode and Balanced with the query being sensitive, an allowed model was chosen. This holds for the tested requests; it does not mean that all queries or fallbacks will comply with the policy. There are six patterns and keywords in the filtering endpoint configuration. Some of the keywords include confidential, medical record, and proprietary. These guidelines offer a basic filtering process, but the detection rate of such policies has not been quantified.
 
 The configuration may also prohibit sensitive queries and/or turn off the use of external models. Provider data retention policy is provided by the administrator and cannot confirm the actual storage of the data by the provider. Choosing an appropriate model is just a routing decision. Further analysis is required to confirm local execution of the model, no private data leakage, removal of the temporary mapping, and no logging of sensitive data.
 
@@ -52,412 +52,132 @@ A multi-objective routing response consists of the selected model, mode, estimat
 Now the task is to integrate the selector with the FastAPI gateway and VS Code client. The gateway will validate models' authorization, retrieve a cached response if any, select a model if necessary, invoke it, and return the response. The use of PostgreSQL for logging, Qdrant for caching, the Privacy Vault, authentication of the user, and error handling are yet to be implemented.
 
 \subsection{Request Processing Steps}
-The prototype produces the routing decision for the provided query and parameters. The recorded tests contain the used model and response fields for the test cases. For Legacy routing, the service estimates model scores based on the task type and difficulty. Then, the service compares the scores with the threshold and picks a model or the default fallback one. For multi-objective routing, the service takes into account the mode and privacy, discards the inappropriate models, compares the valid candidates based on the mode parameters and gives the selected model and explanation. This is the description of the functionality that is revealed through the API; it is not validated at all levels of internal training or scoring implementations.
+The prototype produces the routing decision for the provided query and parameters. The saved experimental responses identify the selected model and related decision fields for the supplied inputs. For Legacy routing, the service estimates model scores based on the task type and difficulty. Then, the service compares the scores with the threshold and picks a model or the default fallback one. For multi-objective routing, the service takes into account the mode and privacy, discards the inappropriate models, compares the valid candidates based on the mode parameters and gives the selected model and explanation. This is the description of the functionality that is revealed through the API; it is not validated at all levels of internal training or scoring implementations.
 
-Privacy criteria are the requirements for the model, while cost and speed weights are preferences for comparing the allowed models. An inexpensive external model should not become allowed due to high scores. The Speed mode additionally considers an estimate of the acceptable response time. The recorded prototype tests concern particular routing decisions only. There are no broader tests of failures, fallbacks and full gateway yet.
-
-\section{Test Case Design and Description}
-Eight test cases have been provided for the current prototype. Five test cases deal with the model list, model selection, Private mode, routing of sensitive query and keyword screening. There are three other test cases for Economy, Speed and Quality modes and are marked as Not Executed. Each table specifies the objective, prerequisites, test procedure and result captured.
-
-All five test cases were performed via prototype API through sample queries. All five test cases passed as per the descriptions given in the tables. The queries and responses were kept as proof. The current test results only pertain to testing prototype functionality; there is no checking whether answers are correct or a model was really used to generate the answer.
-
-
-
-\begin{table}[H]\setlength{\intextsep}{3pt}\captionsetup{skip=4pt}
-\centering\begin{minipage}{\textwidth}\centering
-\setstretch{1}\setlength{\tabcolsep}{4pt}\setlength{\parskip}{0pt}\setlength{\extrarowheight}{1pt}\renewcommand{\arraystretch}{1.10}\normalsize
-\caption{Sample Test case No.1}
-\label{tab:planned_tc01}
-\begin{tabular}{|P{0.22\textwidth}|P{0.25\textwidth}|P{0.23\textwidth}|P{0.20\textwidth}|}\hline
-\multicolumn{4}{|c|}{\textbf{AetherFlow}} \\ \hline
-\multicolumn{4}{|c|}{Model list} \\ \hline
-\textbf{Test Case ID:} & TC-01 & \textbf{QA Test Engineer:} & Ahmad Rasheed \\ \hline
-\textbf{Test case Version:} & 1.0 & \textbf{Reviewed By:} & Muhammad Umar Shoaib Khokhar \\ \hline
-\textbf{Test Date:} & 17 November 2026 & \textbf{Use Case Reference(s):} & UC-01; registry prerequisite \\ \hline
-\textbf{Revision History:} & \multicolumn{3}{P{\dimexpr0.68\textwidth+4\tabcolsep+2\arrayrulewidth\relax}|}{Wording simplified; API result recorded.} \\ \hline
-\textbf{Objective:} & \multicolumn{3}{P{\dimexpr0.68\textwidth+4\tabcolsep+2\arrayrulewidth\relax}|}{Check that the API returns a list of model names.} \\ \hline
-\textbf{\shortstack[l]{Product/Ver/\\Module:}} & \multicolumn{3}{P{\dimexpr0.68\textwidth+4\tabcolsep+2\arrayrulewidth\relax}|}{Model list.} \\ \hline
-\textbf{Environment:} & \multicolumn{3}{P{\dimexpr0.68\textwidth+4\tabcolsep+2\arrayrulewidth\relax}|}{Prototype website, HTTP client, and saved JSON requests and responses.} \\ \hline
-\textbf{Assumptions:} & \multicolumn{3}{P{\dimexpr0.68\textwidth+4\tabcolsep+2\arrayrulewidth\relax}|}{The API is online and its settings stay the same during the checks.} \\ \hline
-\textbf{Pre-Requisite:} & \multicolumn{3}{P{\dimexpr0.68\textwidth+4\tabcolsep+2\arrayrulewidth\relax}|}{The API is online.} \\ \hline
-\textbf{Step No.} & \textbf{Execution description} & \multicolumn{2}{P{\dimexpr0.43\textwidth+2\tabcolsep+\arrayrulewidth\relax}|}{\textbf{Procedure result}} \\ \hline
-1 & Send GET to \texttt{/api/models}. & \multicolumn{2}{P{\dimexpr0.43\textwidth+2\tabcolsep+\arrayrulewidth\relax}|}{HTTP 200; a model list was returned.} \\ \hline
-2 & Read the model names. & \multicolumn{2}{P{\dimexpr0.43\textwidth+2\tabcolsep+\arrayrulewidth\relax}|}{Eight different model names were returned; no name was missing or repeated.} \\ \hline
-\textbf{Comments:} & \multicolumn{3}{P{\dimexpr0.68\textwidth+4\tabcolsep+2\arrayrulewidth\relax}|}{Passed in the automated API run on 17 November 2026. Saved responses support this result.} \\ \hline
-\multicolumn{4}{|c|}{\textbf{Passed}} \\ \hline
-\end{tabular}\end{minipage}
-\end{table}
-
-
-
-
-
-\begin{table}[H]\setlength{\intextsep}{3pt}\captionsetup{skip=4pt}
-\centering\begin{minipage}{\textwidth}\centering
-\setstretch{1}\setlength{\tabcolsep}{4pt}\setlength{\parskip}{0pt}\setlength{\extrarowheight}{1pt}\renewcommand{\arraystretch}{1.10}\normalsize
-\caption{Sample Test case No.2}
-\label{tab:planned_tc02}
-\begin{tabular}{|P{0.22\textwidth}|P{0.25\textwidth}|P{0.23\textwidth}|P{0.20\textwidth}|}\hline
-\multicolumn{4}{|c|}{\textbf{AetherFlow}} \\ \hline
-\multicolumn{4}{|c|}{Model selection} \\ \hline
-\textbf{Test Case ID:} & TC-02 & \textbf{QA Test Engineer:} & Muhammad Abdul Raheem Khan \\ \hline
-\textbf{Test case Version:} & 1.0 & \textbf{Reviewed By:} & Muhammad Umar Shoaib Khokhar \\ \hline
-\textbf{Test Date:} & 17 November 2026 & \textbf{Use Case Reference(s):} & UC-01 \\ \hline
-\textbf{Revision History:} & \multicolumn{3}{P{\dimexpr0.68\textwidth+4\tabcolsep+2\arrayrulewidth\relax}|}{Wording simplified; API result recorded.} \\ \hline
-\textbf{Objective:} & \multicolumn{3}{P{\dimexpr0.68\textwidth+4\tabcolsep+2\arrayrulewidth\relax}|}{Check that Legacy and Balanced routing return a model from the model list.} \\ \hline
-\textbf{\shortstack[l]{Product/Ver/\\Module:}} & \multicolumn{3}{P{\dimexpr0.68\textwidth+4\tabcolsep+2\arrayrulewidth\relax}|}{Model selection.} \\ \hline
-\textbf{Environment:} & \multicolumn{3}{P{\dimexpr0.68\textwidth+4\tabcolsep+2\arrayrulewidth\relax}|}{Prototype website, HTTP client, and saved JSON requests and responses.} \\ \hline
-\textbf{Assumptions:} & \multicolumn{3}{P{\dimexpr0.68\textwidth+4\tabcolsep+2\arrayrulewidth\relax}|}{The API is online and its settings stay the same during the checks.} \\ \hline
-\textbf{Pre-Requisite:} & \multicolumn{3}{P{\dimexpr0.68\textwidth+4\tabcolsep+2\arrayrulewidth\relax}|}{TC-01 passed. Keep the same API settings for both requests.} \\ \hline
-\textbf{Step No.} & \textbf{Execution description} & \multicolumn{2}{P{\dimexpr0.43\textwidth+2\tabcolsep+\arrayrulewidth\relax}|}{\textbf{Procedure result}} \\ \hline
-1 & Send Explain binary search. using Legacy routing with threshold 0.95. & \multicolumn{2}{P{\dimexpr0.43\textwidth+2\tabcolsep+\arrayrulewidth\relax}|}{HTTP 200; GPT-5 was selected. The response included a fallback flag and reasons.} \\ \hline
-2 & Send the same query using Balanced mode. & \multicolumn{2}{P{\dimexpr0.43\textwidth+2\tabcolsep+\arrayrulewidth\relax}|}{HTTP 200; GPT-4.1 was selected and the response showed Balanced mode.} \\ \hline
-\textbf{Comments:} & \multicolumn{3}{P{\dimexpr0.68\textwidth+4\tabcolsep+2\arrayrulewidth\relax}|}{Passed in the automated API run on 17 November 2026. Saved responses support this result.} \\ \hline
-\multicolumn{4}{|c|}{\textbf{Passed}} \\ \hline
-\end{tabular}\end{minipage}
-\end{table}
-
-
-
-
-
-
-
-
-\begin{table}[H]\setlength{\intextsep}{3pt}\captionsetup{skip=4pt}
-\centering\begin{minipage}{\textwidth}\centering
-\setstretch{1}\setlength{\tabcolsep}{4pt}\setlength{\parskip}{0pt}\setlength{\extrarowheight}{1pt}\renewcommand{\arraystretch}{1.10}\normalsize
-\caption{Sample Test case No.3}
-\label{tab:planned_tc03}
-\begin{tabular}{|P{0.22\textwidth}|P{0.25\textwidth}|P{0.23\textwidth}|P{0.20\textwidth}|}\hline
-\multicolumn{4}{|c|}{\textbf{AetherFlow}} \\ \hline
-\multicolumn{4}{|c|}{Private mode} \\ \hline
-\textbf{Test Case ID:} & TC-03 & \textbf{QA Test Engineer:} & Ahmad Rasheed \\ \hline
-\textbf{Test case Version:} & 1.0 & \textbf{Reviewed By:} & Muhammad Umar Shoaib Khokhar \\ \hline
-\textbf{Test Date:} & 17 November 2026 & \textbf{Use Case Reference(s):} & UC-02; FR-10 \\ \hline
-\textbf{Revision History:} & \multicolumn{3}{P{\dimexpr0.68\textwidth+4\tabcolsep+2\arrayrulewidth\relax}|}{Wording simplified; API result recorded.} \\ \hline
-\textbf{Objective:} & \multicolumn{3}{P{\dimexpr0.68\textwidth+4\tabcolsep+2\arrayrulewidth\relax}|}{Check that Private mode chooses a model from the approved list.} \\ \hline
-\textbf{\shortstack[l]{Product/Ver/\\Module:}} & \multicolumn{3}{P{\dimexpr0.68\textwidth+4\tabcolsep+2\arrayrulewidth\relax}|}{Private mode.} \\ \hline
-\textbf{Environment:} & \multicolumn{3}{P{\dimexpr0.68\textwidth+4\tabcolsep+2\arrayrulewidth\relax}|}{Prototype website, HTTP client, and saved JSON requests and responses.} \\ \hline
-\textbf{Assumptions:} & \multicolumn{3}{P{\dimexpr0.68\textwidth+4\tabcolsep+2\arrayrulewidth\relax}|}{The API is online and its settings stay the same during the checks.} \\ \hline
-\textbf{Pre-Requisite:} & \multicolumn{3}{P{\dimexpr0.68\textwidth+4\tabcolsep+2\arrayrulewidth\relax}|}{TC-01 passed. Read the approved model list from the privacy API.} \\ \hline
-\textbf{Step No.} & \textbf{Execution description} & \multicolumn{2}{P{\dimexpr0.43\textwidth+2\tabcolsep+\arrayrulewidth\relax}|}{\textbf{Procedure result}} \\ \hline
-1 & Send GET to \texttt{/api/privacy} and read the approved list. & \multicolumn{2}{P{\dimexpr0.43\textwidth+2\tabcolsep+\arrayrulewidth\relax}|}{HTTP 200; Llama-3.1-8B-Instruct and Qwen3-8B were approved for sensitive queries.} \\ \hline
-2 & Send Explain binary search. using Private mode. & \multicolumn{2}{P{\dimexpr0.43\textwidth+2\tabcolsep+\arrayrulewidth\relax}|}{HTTP 200; Llama-3.1-8B-Instruct was selected. It was on the approved list.} \\ \hline
-\textbf{Comments:} & \multicolumn{3}{P{\dimexpr0.68\textwidth+4\tabcolsep+2\arrayrulewidth\relax}|}{Passed in the automated API run on 17 November 2026. Saved responses support this result.} \\ \hline
-\multicolumn{4}{|c|}{\textbf{Passed}} \\ \hline
-\end{tabular}\end{minipage}
-\end{table}
-
-
-
-
-
-\begin{table}[H]\setlength{\intextsep}{3pt}\captionsetup{skip=4pt}
-\centering\begin{minipage}{\textwidth}\centering
-\setstretch{1}\setlength{\tabcolsep}{4pt}\setlength{\parskip}{0pt}\setlength{\extrarowheight}{1pt}\renewcommand{\arraystretch}{1.10}\normalsize
-\caption{Sample Test case No.4}
-\label{tab:planned_tc04}
-\begin{tabular}{|P{0.22\textwidth}|P{0.25\textwidth}|P{0.23\textwidth}|P{0.20\textwidth}|}\hline
-\multicolumn{4}{|c|}{\textbf{AetherFlow}} \\ \hline
-\multicolumn{4}{|c|}{Sensitive query routing} \\ \hline
-\textbf{Test Case ID:} & TC-04 & \textbf{QA Test Engineer:} & Muhammad Abdul Raheem Khan \\ \hline
-\textbf{Test case Version:} & 1.0 & \textbf{Reviewed By:} & Muhammad Umar Shoaib Khokhar \\ \hline
-\textbf{Test Date:} & 17 November 2026 & \textbf{Use Case Reference(s):} & UC-02; FR-10 \\ \hline
-\textbf{Revision History:} & \multicolumn{3}{P{\dimexpr0.68\textwidth+4\tabcolsep+2\arrayrulewidth\relax}|}{Wording simplified; API result recorded.} \\ \hline
-\textbf{Objective:} & \multicolumn{3}{P{\dimexpr0.68\textwidth+4\tabcolsep+2\arrayrulewidth\relax}|}{Check that a query marked sensitive goes to an approved model.} \\ \hline
-\textbf{\shortstack[l]{Product/Ver/\\Module:}} & \multicolumn{3}{P{\dimexpr0.68\textwidth+4\tabcolsep+2\arrayrulewidth\relax}|}{Sensitive query routing.} \\ \hline
-\textbf{Environment:} & \multicolumn{3}{P{\dimexpr0.68\textwidth+4\tabcolsep+2\arrayrulewidth\relax}|}{Prototype website, HTTP client, and saved JSON requests and responses.} \\ \hline
-\textbf{Assumptions:} & \multicolumn{3}{P{\dimexpr0.68\textwidth+4\tabcolsep+2\arrayrulewidth\relax}|}{The API is online and its settings stay the same during the checks.} \\ \hline
-\textbf{Pre-Requisite:} & \multicolumn{3}{P{\dimexpr0.68\textwidth+4\tabcolsep+2\arrayrulewidth\relax}|}{TC-03 passed. The API allows sensitive queries.} \\ \hline
-\textbf{Step No.} & \textbf{Execution description} & \multicolumn{2}{P{\dimexpr0.43\textwidth+2\tabcolsep+\arrayrulewidth\relax}|}{\textbf{Procedure result}} \\ \hline
-1 & Send This is confidential proprietary information. in Balanced mode with \texttt{sensitive=true}. & \multicolumn{2}{P{\dimexpr0.43\textwidth+2\tabcolsep+\arrayrulewidth\relax}|}{HTTP 200; the response marked the request as sensitive.} \\ \hline
-2 & Compare the selected model with the approved list from TC-03. & \multicolumn{2}{P{\dimexpr0.43\textwidth+2\tabcolsep+\arrayrulewidth\relax}|}{Llama-3.1-8B-Instruct was selected and was on the approved list.} \\ \hline
-\textbf{Comments:} & \multicolumn{3}{P{\dimexpr0.68\textwidth+4\tabcolsep+2\arrayrulewidth\relax}|}{Passed in the automated API run on 17 November 2026. Saved responses support this result.} \\ \hline
-\multicolumn{4}{|c|}{\textbf{Passed}} \\ \hline
-\end{tabular}\end{minipage}
-\end{table}
-
-
-
-
-
-
-\begin{table}[H]\setlength{\intextsep}{3pt}\captionsetup{skip=4pt}
-\centering\begin{minipage}{\textwidth}\centering
-\setstretch{1}\setlength{\tabcolsep}{4pt}\setlength{\parskip}{0pt}\setlength{\extrarowheight}{1pt}\renewcommand{\arraystretch}{1.10}\normalsize
-\caption{Sample Test case No.5}
-\label{tab:planned_tc05}
-\begin{tabular}{|P{0.22\textwidth}|P{0.25\textwidth}|P{0.23\textwidth}|P{0.20\textwidth}|}\hline
-\multicolumn{4}{|c|}{\textbf{AetherFlow}} \\ \hline
-\multicolumn{4}{|c|}{Keyword screening} \\ \hline
-\textbf{Test Case ID:} & TC-05 & \textbf{QA Test Engineer:} & Ahmad Rasheed \\ \hline
-\textbf{Test case Version:} & 1.0 & \textbf{Reviewed By:} & Muhammad Abdul Raheem Khan \\ \hline
-\textbf{Test Date:} & 17 November 2026 & \textbf{Use Case Reference(s):} & UC-02; screening subproblem \\ \hline
-\textbf{Revision History:} & \multicolumn{3}{P{\dimexpr0.68\textwidth+4\tabcolsep+2\arrayrulewidth\relax}|}{Wording simplified; API result recorded.} \\ \hline
-\textbf{Objective:} & \multicolumn{3}{P{\dimexpr0.68\textwidth+4\tabcolsep+2\arrayrulewidth\relax}|}{Check that the word confidential triggers the sensitive label.} \\ \hline
-\textbf{\shortstack[l]{Product/Ver/\\Module:}} & \multicolumn{3}{P{\dimexpr0.68\textwidth+4\tabcolsep+2\arrayrulewidth\relax}|}{Keyword screening.} \\ \hline
-\textbf{Environment:} & \multicolumn{3}{P{\dimexpr0.68\textwidth+4\tabcolsep+2\arrayrulewidth\relax}|}{Prototype website, HTTP client, and saved JSON requests and responses.} \\ \hline
-\textbf{Assumptions:} & \multicolumn{3}{P{\dimexpr0.68\textwidth+4\tabcolsep+2\arrayrulewidth\relax}|}{The API is online and its settings stay the same during the checks.} \\ \hline
-\textbf{Pre-Requisite:} & \multicolumn{3}{P{\dimexpr0.68\textwidth+4\tabcolsep+2\arrayrulewidth\relax}|}{The privacy settings include the keyword confidential. Use made-up text only.} \\ \hline
-\textbf{Step No.} & \textbf{Execution description} & \multicolumn{2}{P{\dimexpr0.43\textwidth+2\tabcolsep+\arrayrulewidth\relax}|}{\textbf{Procedure result}} \\ \hline
-1 & Send This is confidential proprietary information. to \texttt{/api/sensitivity}. & \multicolumn{2}{P{\dimexpr0.43\textwidth+2\tabcolsep+\arrayrulewidth\relax}|}{HTTP 200; a sensitivity result was returned.} \\ \hline
-2 & Read the label and reason. & \multicolumn{2}{P{\dimexpr0.43\textwidth+2\tabcolsep+\arrayrulewidth\relax}|}{The label was sensitive. The reason named the keyword confidential.} \\ \hline
-\textbf{Comments:} & \multicolumn{3}{P{\dimexpr0.68\textwidth+4\tabcolsep+2\arrayrulewidth\relax}|}{Passed in the automated API run on 17 November 2026. Saved responses support this result.} \\ \hline
-\multicolumn{4}{|c|}{\textbf{Passed}} \\ \hline
-\end{tabular}\end{minipage}
-\end{table}
-
-
-
-
-
-
-
-\begin{table}[H]\setlength{\intextsep}{3pt}\captionsetup{skip=4pt}
-\centering\begin{minipage}{\textwidth}\centering
-\setstretch{1}\setlength{\tabcolsep}{4pt}\setlength{\parskip}{0pt}\setlength{\extrarowheight}{1pt}\renewcommand{\arraystretch}{1.10}\normalsize
-\caption{Sample Test case No.6}
-\label{tab:planned_tc06}
-\begin{tabular}{|P{0.22\textwidth}|P{0.25\textwidth}|P{0.23\textwidth}|P{0.20\textwidth}|}\hline
-\multicolumn{4}{|c|}{\textbf{AetherFlow}} \\ \hline
-\multicolumn{4}{|c|}{Economy Mode Routing} \\ \hline
-\textbf{Test Case ID:} & TC-06 & \textbf{QA Test Engineer:} & Ahmad Rasheed \\ \hline
-\textbf{Test case Version:} & 1.0 & \textbf{Reviewed By:} & Muhammad Abdul Raheem Khan \\ \hline
-\textbf{Test Date:} & Not scheduled & \textbf{Use Case Reference(s):} & UC-01; routing modes \\ \hline
-\textbf{Revision History:} & \multicolumn{3}{P{\dimexpr0.68\textwidth+4\tabcolsep+2\arrayrulewidth\relax}|}{New planned case.} \\ \hline
-\textbf{Objective:} & \multicolumn{3}{P{\dimexpr0.68\textwidth+4\tabcolsep+2\arrayrulewidth\relax}|}{Check that Economy mode uses cost when choosing a model.} \\ \hline
-\textbf{\shortstack[l]{Product/Ver/\\Module:}} & \multicolumn{3}{P{\dimexpr0.68\textwidth+4\tabcolsep+2\arrayrulewidth\relax}|}{Economy Mode Routing.} \\ \hline
-\textbf{Environment:} & \multicolumn{3}{P{\dimexpr0.68\textwidth+4\tabcolsep+2\arrayrulewidth\relax}|}{Prototype website, HTTP client, and saved JSON requests and responses.} \\ \hline
-\textbf{Assumptions:} & \multicolumn{3}{P{\dimexpr0.68\textwidth+4\tabcolsep+2\arrayrulewidth\relax}|}{The API is online and its settings stay the same during the checks.} \\ \hline
-\textbf{Pre-Requisite:} & \multicolumn{3}{P{\dimexpr0.68\textwidth+4\tabcolsep+2\arrayrulewidth\relax}|}{Read the current Economy settings and candidate cost values. TC-01 must pass. Cost values and routing scores must be available for comparison.} \\ \hline
-\textbf{Step No.} & \textbf{Execution description} & \multicolumn{2}{P{\dimexpr0.43\textwidth+2\tabcolsep+\arrayrulewidth\relax}|}{\textbf{Procedure result}} \\ \hline
-1 & Send Explain binary search. to the routing API using Economy mode. & \multicolumn{2}{P{\dimexpr0.43\textwidth+2\tabcolsep+\arrayrulewidth\relax}|}{HTTP 200; Economy mode and a registered model are returned.} \\ \hline
-2 & Compare the selected model and candidate scores with the Economy cost rule. & \multicolumn{2}{P{\dimexpr0.43\textwidth+2\tabcolsep+\arrayrulewidth\relax}|}{The recorded scores follow the configured cost weight and tie rules. The chosen model follows that ranking; it need not be the cheapest model in every case.} \\ \hline
-\textbf{Comments:} & \multicolumn{3}{P{\dimexpr0.68\textwidth+4\tabcolsep+2\arrayrulewidth\relax}|}{Expected results only. This case has not been executed; save requests, settings, scores, and responses when running it.} \\ \hline
-\multicolumn{4}{|c|}{\textbf{Not Executed}} \\ \hline
-\end{tabular}\end{minipage}
-\end{table}
-
-
-
-
-
-
-\begin{table}[H]\setlength{\intextsep}{3pt}\captionsetup{skip=4pt}
-\centering\begin{minipage}{\textwidth}\centering
-\setstretch{1}\setlength{\tabcolsep}{4pt}\setlength{\parskip}{0pt}\setlength{\extrarowheight}{1pt}\renewcommand{\arraystretch}{1.10}\normalsize
-\caption{Sample Test case No.7}
-\label{tab:planned_tc07}
-\begin{tabular}{|P{0.22\textwidth}|P{0.25\textwidth}|P{0.23\textwidth}|P{0.20\textwidth}|}\hline
-\multicolumn{4}{|c|}{\textbf{AetherFlow}} \\ \hline
-\multicolumn{4}{|c|}{Speed Mode Routing} \\ \hline
-\textbf{Test Case ID:} & TC-07 & \textbf{QA Test Engineer:} & Ahmad Rasheed \\ \hline
-\textbf{Test case Version:} & 1.0 & \textbf{Reviewed By:} & Muhammad Abdul Raheem Khan \\ \hline
-\textbf{Test Date:} & Not scheduled & \textbf{Use Case Reference(s):} & UC-01; routing modes \\ \hline
-\textbf{Revision History:} & \multicolumn{3}{P{\dimexpr0.68\textwidth+4\tabcolsep+2\arrayrulewidth\relax}|}{New planned case.} \\ \hline
-\textbf{Objective:} & \multicolumn{3}{P{\dimexpr0.68\textwidth+4\tabcolsep+2\arrayrulewidth\relax}|}{Check that Speed mode applies the estimated response-time limit when choosing a model.} \\ \hline
-\textbf{\shortstack[l]{Product/Ver/\\Module:}} & \multicolumn{3}{P{\dimexpr0.68\textwidth+4\tabcolsep+2\arrayrulewidth\relax}|}{Speed Mode Routing.} \\ \hline
-\textbf{Environment:} & \multicolumn{3}{P{\dimexpr0.68\textwidth+4\tabcolsep+2\arrayrulewidth\relax}|}{Prototype website, HTTP client, and saved JSON requests and responses.} \\ \hline
-\textbf{Assumptions:} & \multicolumn{3}{P{\dimexpr0.68\textwidth+4\tabcolsep+2\arrayrulewidth\relax}|}{The API is online and its settings stay the same during the checks.} \\ \hline
-\textbf{Pre-Requisite:} & \multicolumn{3}{P{\dimexpr0.68\textwidth+4\tabcolsep+2\arrayrulewidth\relax}|}{Read the Speed settings and candidate time estimates. TC-01 must pass. Use a 1,000 ms budget with at least one eligible model.} \\ \hline
-\textbf{Step No.} & \textbf{Execution description} & \multicolumn{2}{P{\dimexpr0.43\textwidth+2\tabcolsep+\arrayrulewidth\relax}|}{\textbf{Procedure result}} \\ \hline
-1 & Send Explain binary search. in Speed mode with a 1,000 ms latency budget. & \multicolumn{2}{P{\dimexpr0.43\textwidth+2\tabcolsep+\arrayrulewidth\relax}|}{HTTP 200; Speed mode and a registered model are returned.} \\ \hline
-2 & Compare the selected model estimate and candidate ranking with the budget and Speed rule. & \multicolumn{2}{P{\dimexpr0.43\textwidth+2\tabcolsep+\arrayrulewidth\relax}|}{The selected estimate is at most 1,000 ms. Models above the budget are excluded and the selection follows the Speed rule. This checks estimates, not actual response time.} \\ \hline
-\textbf{Comments:} & \multicolumn{3}{P{\dimexpr0.68\textwidth+4\tabcolsep+2\arrayrulewidth\relax}|}{Expected results only. This case has not been executed; save requests, settings, scores, and responses when running it.} \\ \hline
-\multicolumn{4}{|c|}{\textbf{Not Executed}} \\ \hline
-\end{tabular}\end{minipage}
-\end{table}
-
-
-
-
-
-\begin{table}[H]\setlength{\intextsep}{3pt}\captionsetup{skip=4pt}
-\centering\begin{minipage}{\textwidth}\centering
-\setstretch{1}\setlength{\tabcolsep}{4pt}\setlength{\parskip}{0pt}\setlength{\extrarowheight}{1pt}\renewcommand{\arraystretch}{1.10}\normalsize
-\caption{Sample Test case No.8}
-\label{tab:planned_tc08}
-\begin{tabular}{|P{0.22\textwidth}|P{0.25\textwidth}|P{0.23\textwidth}|P{0.20\textwidth}|}\hline
-\multicolumn{4}{|c|}{\textbf{AetherFlow}} \\ \hline
-\multicolumn{4}{|c|}{Quality Mode Routing} \\ \hline
-\textbf{Test Case ID:} & TC-08 & \textbf{QA Test Engineer:} & Ahmad Rasheed \\ \hline
-\textbf{Test case Version:} & 1.0 & \textbf{Reviewed By:} & Muhammad Abdul Raheem Khan \\ \hline
-\textbf{Test Date:} & Not scheduled & \textbf{Use Case Reference(s):} & UC-01; routing modes \\ \hline
-\textbf{Revision History:} & \multicolumn{3}{P{\dimexpr0.68\textwidth+4\tabcolsep+2\arrayrulewidth\relax}|}{New planned case.} \\ \hline
-\textbf{Objective:} & \multicolumn{3}{P{\dimexpr0.68\textwidth+4\tabcolsep+2\arrayrulewidth\relax}|}{Check that Quality mode uses predicted quality scores when choosing a model.} \\ \hline
-\textbf{\shortstack[l]{Product/Ver/\\Module:}} & \multicolumn{3}{P{\dimexpr0.68\textwidth+4\tabcolsep+2\arrayrulewidth\relax}|}{Quality Mode Routing.} \\ \hline
-\textbf{Environment:} & \multicolumn{3}{P{\dimexpr0.68\textwidth+4\tabcolsep+2\arrayrulewidth\relax}|}{Prototype website, HTTP client, and saved JSON requests and responses.} \\ \hline
-\textbf{Assumptions:} & \multicolumn{3}{P{\dimexpr0.68\textwidth+4\tabcolsep+2\arrayrulewidth\relax}|}{The API is online and its settings stay the same during the checks.} \\ \hline
-\textbf{Pre-Requisite:} & \multicolumn{3}{P{\dimexpr0.68\textwidth+4\tabcolsep+2\arrayrulewidth\relax}|}{Read the Quality settings and model quality predictions. TC-01 must pass. Scores for all eligible models must be available.} \\ \hline
-\textbf{Step No.} & \textbf{Execution description} & \multicolumn{2}{P{\dimexpr0.43\textwidth+2\tabcolsep+\arrayrulewidth\relax}|}{\textbf{Procedure result}} \\ \hline
-1 & Send Explain binary search. to the routing API using Quality mode. & \multicolumn{2}{P{\dimexpr0.43\textwidth+2\tabcolsep+\arrayrulewidth\relax}|}{HTTP 200; Quality mode and a registered model are returned.} \\ \hline
-2 & Compare the chosen model with the eligible models and their predicted quality scores. & \multicolumn{2}{P{\dimexpr0.43\textwidth+2\tabcolsep+\arrayrulewidth\relax}|}{The chosen model has the highest predicted quality among eligible models, with ties handled by the documented rule. This does not measure actual answer correctness.} \\ \hline
-\textbf{Comments:} & \multicolumn{3}{P{\dimexpr0.68\textwidth+4\tabcolsep+2\arrayrulewidth\relax}|}{Expected results only. This case has not been executed; save requests, settings, scores, and responses when running it.} \\ \hline
-\multicolumn{4}{|c|}{\textbf{Not Executed}} \\ \hline
-\end{tabular}\end{minipage}
-\end{table}
-
-
-
-
-\section{Test Metrics}
-Table~\ref{tab:planned_test_metrics} summarizes the current status of eight cases. Five passed the recorded API checks; the three new mode cases are Not Executed.
-
-\begin{table}[H]
-\centering\small
-\setstretch{1}
-\setlength{\parskip}{0pt}
-\setlength{\tabcolsep}{4pt}
-\caption{Sample Test case Matric.No.1}
-\renewcommand{\arraystretch}{1.08}
-\setlength{\extrarowheight}{0pt}
-\begin{tabular}{|>{\raggedright\arraybackslash}m{0.36\textwidth}|>{\raggedright\arraybackslash}m{\dimexpr0.64\textwidth-4\tabcolsep-3\arrayrulewidth\relax}|}\hline
-\textbf{Metric} & \textbf{Purpose} \\ \hline
-\textbf{Number of Test Cases} & 8 cases in total.\newline 5 executed; 3 Not Executed (TC-06--TC-08). \\ \hline
-\textbf{Number of Test Cases Passed} & 5 of 5 executed cases passed. \\ \hline
-\textbf{Number of Test Cases Failed} & 0 of 5 executed cases failed. \\ \hline
-\textbf{Test Case Defect Density} & 0\% case failure rate: (0 failed $\times$ 100) / 5 executed. This is not defects per line of code. \\ \hline
-\textbf{Test Case Effectiveness} & Not available. These checks found no failures, but there is no complete defect log to calculate this metric. \\ \hline
-\textbf{Traceability Matrix} & TC-01 and TC-02 relate to UC-01.\newline TC-03, TC-04, and TC-05 relate to UC-02. TC-03 and TC-04 also relate to FR-10. TC-06--TC-08 also relate to UC-01 and await execution. These checks do not cover all requirements. \\ \hline
-\end{tabular}
-\label{tab:planned_test_metrics}
-\end{table}
-
-Five cases passed their recorded API checks. Economy, Speed, and Quality mode cases remain Not Executed. A pass confirms the behavior described in that case only. It does not prove answer quality, secure local execution, or complete system reliability.
+Privacy criteria are the requirements for the model, while cost and speed weights are preferences for comparing the allowed models. An inexpensive external model should not become allowed due to high scores. The Speed mode additionally considers an estimate of the acceptable response time. The preliminary experiments examine particular routing decisions only. There are no broader tests of failures, fallbacks and full gateway yet.
 
 \section{Conclusion}
-Model selection, privacy settings and decision explanations can be done using the FYP-I prototype interface. The captured API responses back up the particular model-list, routing and keyword screening outcomes presented in this chapter. Training and evaluation of performance are still pending. The main contribution of the FYP-I prototype is having an operational decision interface to explore model selection trade-offs. The next step is integrating the decision interface to the inference, caching, data privacy, logging and developer client operations. Five cases were successfully validated against the captured API responses. Meanwhile, there are three mode cases that need to be executed.
+The FYP-I implementation provides a web interface and an API for exploring model-selection decisions. The available responses expose the configured model list, routing choices, privacy settings, and simple keyword-screening explanations. These components provide a starting point for the proposed gateway, while the training records and reported performance summaries still require independent verification. Chapter~\ref{ch:results} examines the preliminary experimental evidence. Live inference, the semantic cache, the Privacy Vault, usage logging, and VS Code integration remain work for FYP-II, together with formal integration and acceptance testing.
 
 \clearpage
-\setcounter{chapter}{8}
+
 
 \chapter{Experimental Results and Discussion}
 \label{ch:results}
 
-This chapter gives the outcome that has been achieved using the existing AetherFlow Routing prototype. The evaluation tests whether the prototype is able to generate a model list, select a model depending on certain conditions, adhere to the approved model rules, and select a sensitive word. The results have been provided in table format and are discussed below. The aim of doing this is to show what the prototype is capable of achieving.
+This chapter describes the initial experiments carried out using the present AetherFlow routing prototype. The experiments explore issues of configuration of the model, influence of routing parameters on the selected model, and reaction of the keyword screening interface. The findings are based on the analysis of recorded API request-response pairs and will be evaluated with respect to expected functioning of the prototype. The focus of this evaluation is selection of models and interface output. The performance of answer generation and the whole gateway are not evaluated here.
 
 \section{Experimental Setup}
-The prototype API was evaluated using a Python HTTP client. One request at a time was generated. The input, response, HTTP status, and date of each request were stored. In order to be considered a successful API response, it should give HTTP 200. There were two sample queries used. "Explain binary search" was used for normal model selection and Private mode. "This is confidential proprietary information" was used for sensitive-query routing and keyword filtering. The sensitive-query routing request also had the flag \texttt{sensitive=true}. There were no real personal data in these queries. Evaluation involves the five cases from Section 7.2. The other three mode cases are Not Executed and do not have any results provided here. Five executed cases involved seven API responses that were stored: two for model and privacy configurations, four for routing, and one for sensitivity filtering. The privacy configuration was used in multiple cases. Each query and configuration was tested once. The files \texttt{api\_checks.json} and \texttt{report\_case\_results.json} are part of the evidence package; there are also scripts for repeating the tests.
+The prototype was assessed by providing selected prompts with various routing configurations and analyzing the resulting output. The tests concentrated on model selection and sensitivity detection. The prompt ``Explain binary search.' was provided with the use of Legacy, Balanced, and Private modes. The artificial prompt ``This is confidential proprietary information.' was provided with the help of Balanced mode and with the parameter \texttt{sensitive=true}. This prompt was also used with the sensitivity endpoint. The saved API requests were passed via the corresponding Python script with one-time usage of every input and configuration. There are seven responses analyzed here: one model list, one privacy configuration, four routing decisions, and one sensitivity detection. No actual personal data was provided.
 
-\section{Experimental Results}
-Table~\ref{tab:verified_outcomes} summarizes the recorded results. Each case was marked Passed because its response met the checks defined in its test table. These are results for the tested prototype features, rather than a measure of the accuracy of generated answers.
+\section{Preliminary Experimental Results}
+The experiments try to answer the following questions: if the prototype reveals the configuration required for the selection, if the settings of the routes influence the choice returned, and if the configuration of a sensitivity keyword results in the expected classification. Seven out of seven applicable requests have resulted in HTTP 200. This proves that the interfaces returned positive responses to these requests; the interpretation of their content will be done below.
+
+\subsection{Model Configuration and Approved Destinations}
+Experiment 1 retrieved the list of models and the privacy parameters. The response for model list had eight unique, non-empty model IDs. The response for privacy parameters returned two models that are approved for sensitive queries. Table~\ref{tab:prototype_configuration_results} shows the observed configuration.
 
 \begin{table}[!htbp]
 \centering\small
 \setstretch{1}\renewcommand{\arraystretch}{1.15}
-\caption{Results of the five prototype test cases}
-\begin{tabular}{|P{0.12\textwidth}|P{0.24\textwidth}|P{0.40\textwidth}|P{0.10\textwidth}|}\hline
-\textbf{Case ID} & \textbf{Feature} & \textbf{Recorded Result} & \textbf{Status} \\ \hline
-TC-01 & Model list & Eight different model names were returned. No name was missing or repeated. & Passed \\ \hline
-TC-02 & Model selection & Legacy and Balanced routing returned registered models and decision details. & Passed \\ \hline
-TC-03 & Private mode & The selected model was on the approved list for sensitive queries. & Passed \\ \hline
-TC-04 & Sensitive-query routing & The query marked sensitive was routed to a model on the approved list. & Passed \\ \hline
-TC-05 & Keyword screening & The sample containing ``confidential'' was labelled sensitive, with a keyword explanation. & Passed \\ \hline
+\caption{Observed model and privacy configuration}
+\begin{tabular}{|P{0.23\textwidth}|P{0.30\textwidth}|P{0.35\textwidth}|}\hline
+\textbf{Configuration} & \textbf{Recorded Result} & \textbf{Interpretation} \\ \hline
+Model list & Eight distinct model identifiers were returned. & The interface exposes a defined set of model entries against which routing choices can be checked. \\ \hline
+Sensitive-query approvals & Llama-3.1-8B-Instruct and Qwen3-8B were approved. & The configuration supplies an explicit allowed set for the privacy-related comparisons. \\ \hline
 \end{tabular}
-\label{tab:verified_outcomes}
+\label{tab:prototype_configuration_results}
 \end{table}
 
-\subsection{Model List}
-Eight model names were received from the model-list command. None of the names was empty or repeated. This indicates that the interface can receive the list required for checking and displaying the models. Nonetheless, the presence of a particular model on the list does not mean that it is reachable.
+These answers define the setup for interpreting the routing experiment. For example, a chosen identifier can be verified from the registry, and a privacy-oriented decision can be checked against the approved models. Nevertheless, a configured identifier does not confirm that a model is connected, accessible, and active in this setting. In the same way, the approval flag represents a configured rule and does not indicate anything about the provider’s handling of the data. Thus, the experiment shows a reference configuration rather than a benchmark of model capabilities or an example of its secure operation.
 
-\subsection{Model Selection}
-The ordinary query was submitted using Legacy routing and Balanced routing. Legacy used a threshold of 0.95 and returned GPT-5. Its fallback flag was true, which means the router reported using its fallback choice. Balanced returned GPT-4.1, and its fallback flag was false. Both names appeared in the model list. Table~\ref{tab:verified_routes} shows these choices alongside the privacy-related results.
+\subsection{Effect of Routing Settings on Model Selection}
+The second experiment compared answers to the ordinary prompt under three routing configurations. Legacy routing resulted in GPT-5. Balanced routing resulted in GPT-4.1. Private mode resulted in Llama-3.1-8B-Instruct. Additional Balanced routing request labeled as sensitive resulted in Llama-3.1-8B-Instruct. Chosen identifiers were part of the recorded list of models. Table~\ref{tab:verified_routes} contains the choices without considering quality, cost, and latency estimates as measured results.
 
 \begin{table}[!htbp]
 \centering\small
 \setstretch{1}\renewcommand{\arraystretch}{1.15}
-\caption{Model selections recorded during the test cases}
-\begin{tabular}{|P{0.12\textwidth}|P{0.30\textwidth}|P{0.29\textwidth}|P{0.15\textwidth}|}\hline
-\textbf{Case ID} & \textbf{Request Setting} & \textbf{Selected Model} & \textbf{HTTP Status} \\ \hline
-TC-02 & Legacy, threshold 0.95 & GPT-5 & 200 \\ \hline
-TC-02 & Balanced & GPT-4.1 & 200 \\ \hline
-TC-03 & Private & Llama-3.1-8B-Instruct & 200 \\ \hline
-TC-04 & Balanced, marked sensitive & Llama-3.1-8B-Instruct & 200 \\ \hline
+\caption{Returned model choices under the recorded routing settings}
+\begin{tabular}{|P{0.26\textwidth}|P{0.30\textwidth}|P{0.32\textwidth}|}\hline
+\textbf{Prompt} & \textbf{Routing Setting} & \textbf{Selected Model} \\ \hline
+Ordinary sample & Legacy & GPT-5 \\ \hline
+Ordinary sample & Balanced & GPT-4.1 \\ \hline
+Ordinary sample & Private & Llama-3.1-8B-Instruct \\ \hline
+Synthetic sensitive sample & Balanced with sensitivity flag & Llama-3.1-8B-Instruct \\ \hline
 \end{tabular}
 \label{tab:verified_routes}
 \end{table}
 
-The same query produced different choices when the routing setting changed. This shows that the setting affected the decision in this example. It does not show which model would give the better answer, because neither answer was generated and scored as part of these checks. Similarly, choosing a model with a lower reported cost does not establish actual savings without recorded usage.
+The change in routing settings for the same prompt resulted in a change in the model selection. This shows that the decision interface is affected by the selected policy and not just returning one single fixed model for those settings. The options cannot be taken to mean that GPT-5 is the best performing model, or Balanced routing is superior in terms of quality or costs to Legacy. These depend on generated responses and scores. What can be defended here is the difference in selection decisions resulting from those settings.
 
-\subsection{Private Mode and Sensitive Queries}
-Privacy options helped Llama-3.1-8B-Instruct and Qwen3-8B handle sensitive questions. With the privacy option set to private, the selected model was Llama-3.1-8B-Instruct for answering the common question. Likewise, Llama-3.1-8B-Instruct was selected in balanced mode to answer the sensitive question while sensitivity was enabled.
+Both the privacy-related reactions involved choosing a model from the approved two entry models. Indeed, the ordinary reaction involved a change from GPT-4.1 in the balanced mode to an approved model in the private mode. It thus provides support to the limited finding that the choice of the private mode influenced the eligibility of the ordinary reaction. The sensitive balanced reaction was also in line with the restriction set up. However, the prompt as well as the flag used were different from the ordinary balanced reaction. It is impossible to determine the influence of the keyword in relation to the flag since the experiment cannot separate the two.
 
-This shows that the two requests under examination adhered to the model restrictions set. The sensitive answer kept the sensitive label. It is not possible to establish which of the two parameters caused the restriction since the request had both the keyword and the flag. Approval of an approved model does not necessarily mean using a local model; more research is needed on the actual model request and network packets.
-
-\subsection{Keyword Screening}
-The sensitivity criterion marked the sample text as sensitive and cited ``confidential'' as the rationale for this decision. This corresponds to the keyword specified in the privacy options. This result indicates that the algorithm correctly identified this obvious case and provided a justification that the user could comprehend.
-
-One example does not suffice to evaluate the quality of detection. While sensitive text can employ various keywords, an ordinary text might also include a keyword without containing any private information at all. Thus, more sensitive and ordinary examples must be used for evaluation purposes.
-
-\section{Discussion}
-There have been some developments made in the decision-making process by the prototype. The interface gives the model information, reacts on the routing parameters, finds the approved model in case of the tested privacy cases and gives the explanation of keyword match. Saved requests and responses prove these findings and help make the checks more easily reproducible.
-
-The difference is in the choice of the model and assessment of the answer provided by it. At the moment the checks include the examination of the chosen name and API fields. These checks do not give any scores to the generated answers and do not measure the actual cost and time of model execution.
-
-\section{Limitations and Further Evaluation}
-The evaluation used only a few sample inputs, one per each input and configuration. This was done without testing lots of users simultaneously, provider failures, changes in the availability of the model, or all conceivable queries. No build identifier was supplied by the server; thus, the next evaluation could show differences due to changes in the deployment.
-
-The quality, cost, and response time statistics presented above have not been independently validated using full source data. Therefore, they cannot be presented as performance gains. The list of missing evidence for the next phase is shown in Table~\ref{tab:evaluation_requirements}.
+\subsection{Response to a Configured Sensitivity Keyword}
+The third experiment sent the synthetic sensitive prompt directly to \texttt{/api/sensitivity}. The response labelled it sensitive and identified the word ``confidential'' as the matching keyword. The same word appeared in the recorded configuration. Table~\ref{tab:screening_experiment} presents the returned fields used in the analysis.
 
 \begin{table}[!htbp]
 \centering\small
 \setstretch{1}\renewcommand{\arraystretch}{1.15}
-\caption{Evidence needed for full evaluation in FYP-II}
-\begin{tabular}{|P{0.23\textwidth}|P{0.39\textwidth}|P{0.26\textwidth}|}\hline
-\textbf{Area} & \textbf{Evidence Needed} & \textbf{Current Position} \\ \hline
-Dataset & Saved queries, correct labels, separate data splits, and duplicate checks. & Full records still need checking. \\ \hline
-Answer quality & Generated answers and a clear, repeatable scoring method. & No answer-quality result is established by these cases. \\ \hline
-Cost & Recorded token usage, provider prices, and local running costs. & Displayed savings remain unverified. \\ \hline
-Response time & Repeated measurements with stated timing boundaries and hardware. & No inference-speed result is established by these cases. \\ \hline
-Privacy and cache & Network checks, mapping deletion records, user-isolation checks, and misleading cache examples. & Full gateway testing is still required. \\ \hline
+\caption{Recorded response for the synthetic sensitivity example}
+\begin{tabular}{|P{0.24\textwidth}|P{0.27\textwidth}|P{0.37\textwidth}|}\hline
+\textbf{Response Field} & \textbf{Recorded Value} & \textbf{Interpretation} \\ \hline
+HTTP status & 200 & The endpoint returned a successful response. \\ \hline
+Sensitivity label & Sensitive & The supplied sample triggered a sensitivity rule. \\ \hline
+Explanation & Keyword ``confidential'' matched. & The response identified a configured rule as the reason for the label. \\ \hline
 \end{tabular}
-\label{tab:evaluation_requirements}
+\label{tab:screening_experiment}
 \end{table}
 
-The team will produce a labeled dataset that is already validated, with training, validation, and test datasets as part of FYP-II. Routing policy will be compared to static-model based selection using identical query inputs and identical model configurations. Response outputs will be scored, token usage tracked, and time taken for response will be logged multiple times. Private and cache tests will also verify actual data transfer, isolation of users, deletion of temporary data, and wrong cache outputs.
+Such a case indicates the existence of an established relationship between the specified keyword configuration and the classified content. Furthermore, an explanation allows tracing of the decision back to the applicable rule, which could help analyze why the given request was classified as sensitive. Such an outcome does not prove general detection capabilities. A sensitive request may include no keyword from the list, and regular text can use the concept of confidentiality without mentioning any confidential information. As there is only one confirmed positive case, we cannot measure precision and recall.
+
+\section{Discussion}
+The overall experiments have created a small but observable piece of the entire request flow as proposed. The prototype has provided the model information, has given policy-based selections and a rule-based justification of the sensitivity example. The configuration and response logs ensure that each observation is tested against the actual input used. This is an important contribution towards the FYP-I decision interface and behavior to maintain when integrating the selector with the gateway. However, the results have not demonstrated the full value of multi-objective advantage of the AetherFlow since a different model selected is not necessarily the better answer, cheaper or faster.
+
+The API responses recorded also have predictions of quality and estimates of resource value. These have not been independently verified from the training data, benchmark entries, or actual usage of the providers, and hence are not included in the tables of results of the experiments. There was no scoring of any generated answers, nor was there a determination of cost and time for inference and generation. The difference is that while request fulfillment and explanation can be right, even if the prediction and/or response are wrong.
+
+\section{Limitations and Further Evaluation}
+This evidence is confined to a carefully curated set of prompts, where there was only one execution per prompt and setup. It does not cover variability between executions, the ability to work concurrently, behavior on failures of the providers, or performance on unseen task distributions. Additionally, the lack of the identifier of the server build used makes it more difficult to match the future setup to the one observed. The privacy concerns relate to the model names that are returned and do not cover the internal network traffic, local executions, or deletion of temporary files.
+
+The FYP-II approach would make use of a tested dataset with well-defined answer labels, as well as a training, validation, and test split. The routing policies would be evaluated against baselines using the fixed models through the same query and generation settings. There would be scores for the generated answers, recording of the token usage and associated cost, and measurement of the response time. The privacy and cache evaluation would evaluate the approved destinations, data transfer, user isolation, deletion of the temporary mapping, and cache misdirection. Test cases and metrics for the integrated gateway would be designed.
 
 \section{Conclusion}
-The current prototype shows the initial procedures required for model selection and simple sensitive queries handling. From the recorded responses, it can be seen that routing parameters influence the selected model while the tested private queries are in the accepted models' list. The use of keyword filtering gives a rational explanation to its decision making. All these results provide justification for proceeding with the development of the gateway. The next step is to analyze the entire process of query and answer handling together with its cost and performance.
+The initial experiments show the behavior of the prototype in an observable way. The model configuration can be obtained; routing configurations will influence the selection; and sensitivity is the keyword provided, which leads to a classified outcome. Both privacy related selections that have been tested fall into the approved category. There are still issues related to answer quality, resource usage, and privacy left for evaluation in FYP-II.
 
-\chapter{Conclusion and Future Work}
+\chapter{Conclusion}
 \label{ch:conclusions}
 
-This chapter reviews the FYP-I contribution and sets out the remaining work for FYP-II.
-\section{Conclusion}
-The problem and vision describe the need to choose models taking into account workload and privacy limitations. Literature identifies the gap between the learning and executing routing on the basis of privacy. Requirements give an expected behavior for the gateway. Methodology explains how the estimation of selection and reuse can be made. Design provides the connection between client, routing, privacy, and storage modules. Implementation produces a simple client and a prototype of selection. The recorded observations of the API demonstrate some actions of routing but no performance benefits are proven and the gateway is only partially implemented. The design requires privacy in order to be able to select the models before making any other considerations.
+AetherFlow solves the problem of model selection with regard to answer quality, costs, response time and privacy. This problem was studied using literature review, requirement analysis, proposed methodology, system design, prototype implementation and preliminary experiments. The literature demonstrated techniques for learned routing, semantic caching and efficient model serving to support the proposed gateway, and defined boundaries that need to be assessed in realistic settings. The requirements set out norms of conduct and specified that before routing preferences were used, privacy restrictions must be applied to determine which destinations would be allowed. The methodology and architecture explained how the client and other components such as privacy screening, cache, quality predictor, model adapters and storage services would work together. In FYPI, a prototype of the initial client and routing came up to investigate these decisions. The saved responses to the API calls indicated that the routing configurations influenced the models returned, and that the privacy-related configurations examined were part of the allowed set of configurations. There was also a synthetic sensitive prompt which yielded a classification related to a known keyword. These results are proof of prototype behavior, not proof of improvements in answer accuracy, cost, speed or comprehensive privacy protection. The project thus progressed in design and first implementation and the entire integrated scope has not yet been completed. The next step is to integrate the VS Code client, live model execution, secure key management, privacy services, and semantic cache. FYP-II will test the entire workflow on the checked datasets and record the usage, repeated measurements, and systematic testing, and present the evidence of the practical benefits and limitations of the approach proposed.
 
 \section{Challenges and Work Left Out}
-Quality, cost, and response time compromise trade-off poses a design problem; however, the present dataset does not make it possible to demonstrate that one particular approach works better. There are no confirmed full logs of training and testing for calibration, error assessment, and making conclusions about unknown workloads. Creating a valid labeled dataset involves several responses of a model and the rating of these responses. Just a routing decision is not enough to ensure that the system works properly – there are privacy, caching, fallback, and logging aspects.
+The problem is making sure that model selection leads to execution and results. The full log of the training and testing process has not yet been independently verified, which makes it impossible to draw any conclusions about the quality of predictions and performance on queries not seen before. The comparative analysis needs consistent scores of the models' responses, usage statistics, and consistent measurements. The routing results of the prototype cannot be used to confirm secure local processing or cache re-use.
 
 \begin{table}[!htbp]
 \centering\small
+\setstretch{1}\small\setlength{\parskip}{0pt}\setlength{\tabcolsep}{5pt}\setlength{\extrarowheight}{1.5pt}\renewcommand{\arraystretch}{1.25}
 \caption{Work deferred to FYP-II}
-\begin{tabular}{|p{0.34\textwidth}|p{0.56\textwidth}|}
-\hline
-\textbf{Item} & \textbf{Why it was deferred} \\ \hline
-Live local and cloud execution & Requires a stable, reproducible selection baseline first. \\ \hline
-Masking and Privacy Vault integration & Data movement can be verified only after real execution is connected. \\ \hline
-Two-step semantic cache & Unsafe without privacy policy enforcement and user isolation. \\ \hline
-Telemetry, authentication, and failure recovery & Depend on the integrated gateway. \\ \hline
-Latency targets and confidence intervals & Require an integrated build for timing and raw experiment records for statistical analysis. \\ \hline
+\begin{tabular}{|p{0.34\textwidth}|p{0.56\textwidth}|}\hline
+\textbf{Item} & \textbf{Reason for Deferral} \\ \hline
+Live local and cloud inference & Needs model adapters, credential protection and request flow completion. \\ \hline
+Masking and Privacy Vault implementation & Needs verification of data transfer, data restoration and deletion mapping. \\ \hline
+Two-step semantic cache & Needs privacy rules and isolation, and checking incorrect answer recycling. \\ \hline
+Authentication, usage logging and recovery & Needs to depend on the connected gateway and storage services. \\ \hline
+Performance evaluation and comparison & Needs verified data, generated answers, usage logs and timings. \\ \hline
+Test cases and metrics development & To be designed and used for component testing and request flow. \\ \hline
 \end{tabular}
 \label{tab:deferred_work}
 \end{table}
 
 \section{Plan for FYP-II}
-FYP-II will first integrate the VS Code extension with the FastAPI gateway, so that chat messages or selected code will be passed from the user and the answers generated by the model will be returned. The model selector will be next integrated with local Qwen and Llama models and with approved cloud models via separate adapters. User-provided and system-managed API keys will be stored securely and won’t be included in source code, responses and logs. Availability of models, validation of keys, timeouts and failed requests will be taken into account before activating the flow. Privacy screening and Privacy Vault will be next added in order to limit destinations and secure temporary mappings. Two-step semantic cache will be next integrated via Qdrant, while PostgreSQL will log the request statuses and usages without logging any sensitive information. Next, the team will validate the dataset and labels, train and evaluate quality predictor, and set up routing parameters based on separate validation dataset. Finally, the whole extension-to-model flow will be tested for quality, cost, speed, privacy, cache correctness, and failure handling. Defects will be fixed, and the final delivery, presentation, and report will include measured results and limitations.
+In FYP-II, the extension for VS Code will be coupled with the FastAPI gateway for handling chat and selected-code requests. Local Qwen and Llama models as well as the approved cloud-based models will be connected via different adapters. The user provided API keys and system managed API keys will be secured. The integration of privacy screening, Privacy Vault, and Qdrant caching will take place, while the request details will be recorded in PostgreSQL without including the sensitive information. The dataset will be reviewed by the team, quality predictor will be trained, and routing configuration will be tuned using the validation dataset. The testing process will include integration testing, privacy testing, cache correctness testing, timeout testing, and recovery testing.
 
-\section{Recommendations for Future Work}
+\section{Suggestions for Future Work}
 \begin{enumerate}
 \setlength{\itemsep}{0pt}
 \setlength{\parsep}{0pt}
-\item Send a query to a stronger model when the router is unsure whether a cheaper model can answer it correctly.
-\item Improve model selection for each type of task, and study cases where a cheaper model answers correctly but the strongest model does not.
-\item Improve sensitive-data detection so it does not rely only on keywords. Test the cache with similar-looking queries that need different answers.
-\item Find and reduce the causes of unusually slow responses from local models.
-\item Test newer model versions using realistic queries and request volumes.
+\item Use uncertainty of prediction made by the router as a metric for switching to a more powerful model.
+\item Perform model selection for various tasks, including queries where a less expensive model is correct and the most powerful model is wrong.
+\item Detect sensitive data based on something other than keywords and test the cache against similar looking queries with different answers.
+\item Investigate and fix slow responses of the local models.
+\item Re-test updated models with realistic requests.
 \end{enumerate}
 
-\section{Final Conclusion}
-The present prototype could form the foundation for the AetherFlow system, but its performance needs to be proven, as well as the whole gateway needs to be designed yet. The most important thing about FYP-II is that it should provide a replicable benchmark, end-to-end privacy, cache reuse proof, and model-client connection.
+The report establishes AetherFlow's requirements, literature-based approach, system design, and initial prototype. FYP-II will complete the gateway and evaluate its practical benefits through reproducible experiments, addressing the integration and evidence gaps identified throughout this report.

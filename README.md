@@ -5,15 +5,17 @@ LaTeX source, figures, and compiled PDF for the AetherFlow FYP-I Deliverable III
 ## Files
 
 - `main.tex`: main document, front matter, and Chapters 1–6.
-- `chapters_7_to_10.tex`: Chapters 7, 9, and 10; Chapter 8 is intentionally omitted for this deliverable.
+- `chapters_7_to_10.tex`: Chapters 7–9 (Implementation and Test Cases, Experimental Results and Discussion, and Conclusion). The filename is retained for compatibility; the report chapters are numbered sequentially.
 - `FastFyp.cls`: university report document class.
 - `fypbib.bib`: bibliography database.
 - `Figures/`: diagrams, screenshots, logos, and other report assets.
 - `main.pdf`: compiled report snapshot.
-- `evidence/prototype-observations/`: saved preliminary API observations and reproduction scripts.
-- `evidence/formal-test-run/`: recorded API responses, assessment script, and the current report case-ID mapping in `report_case_results.json`. The report contains five Passed cases and three Not Executed mode cases; original execution records retain their original IDs.
+- `evidence/preliminary-experiments/`: saved API observations, an evidence index, and the original reproduction script supporting Chapter 8.
+- `evidence/prototype-observations/` and `evidence/formal-test-run/`: retained historical records from earlier report revisions. The current report omits the formal test-case and test-metric sections.
 - `chapters/`: retained earlier chapter source files. The current main document does not import these files; edit `main.tex` and `chapters_7_to_10.tex` for the active report.
 - `.vscode/settings.json`: LaTeX Workshop build configuration.
+
+The current prototype is [AetherFlow](https://aether-flow-gamma.vercel.app/). Preliminary API observations describe recorded prototype behavior; they do not establish measured model accuracy, cost savings, or end-to-end privacy.
 
 ## Build locally
 
